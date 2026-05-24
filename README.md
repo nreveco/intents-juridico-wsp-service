@@ -1,27 +1,43 @@
 # WhatsApp AI Automation Engine 🤖
 
-Motor de automatización **WhatsApp + IA + Base de Datos** para PyMEs.  
-Responde automáticamente usando **información real del negocio** — precios, productos, horarios, reservas y pedidos.
+Motor de automatización **WhatsApp + IA local + Base de Datos** para PyMEs.  
+Responde automáticamente usando **información real del negocio** — precios, productos, horarios, reservas y pedidos.  
+**Sin costos de API de IA** — corre completamente en local con [Ollama](https://ollama.com).
 
-## Arquitectura del pipeline
+## Stack tecnológico
+
+| Capa | Tecnología |
+|---|---|
+| Backend | **FastAPI** (async) |
+| Base de datos | **PostgreSQL 16** + SQLAlchemy async |
+| LLM local | **Ollama** — `qwen2.5:7b` / `llama3.2:3b` |
+| Transcripción de voz | **faster-whisper** (CPU, sin API externa) |
+| Visión | **Ollama Vision** — `llava:7b` |
+| WhatsApp | **Meta Cloud API** |
+| Containerización | **Docker Compose** (app + db + ollama) |
+
+## Pipeline de un mensaje
 
 ```
 WhatsApp (Meta Cloud API)
         │
         ▼
-  [1] Intent Engine          ← OpenAI extrae intención + entidades
+  [1] Media Processor        ← faster-whisper (audio) / Ollama Vision (imagen) / pypdf (PDF)
         │
         ▼
-  [2] Action Router          ← Python ejecuta lógica con datos REALES de la DB
+  [2] Intent Classifier      ← Ollama: extrae intención + entidades (JSON mode + Pydantic)
         │
         ▼
-  [3] Response Builder       ← OpenAI formatea respuesta natural
+  [3] Action Router          ← Python ejecuta lógica con datos REALES de la DB
+        │
+        ▼
+  [4] Response Builder       ← Ollama: formatea respuesta natural en español
         │
         ▼
 WhatsApp → Cliente
 ```
 
-### Intenciones detectadas
+## Intenciones detectadas (15)
 
 | Intent | Ejemplo |
 |---|---|
@@ -30,195 +46,150 @@ WhatsApp → Cliente
 | `ORDER_CREATE` | "Quiero pedir 2 completos dinámicos" |
 | `ORDER_STATUS` | "¿Cómo va mi pedido?" |
 | `BOOKING` | "Reservar mesa para mañana 8pm" |
+| `QUOTE_REQUEST` | "Necesito cotización para pintar mi auto" |
+| `CART_ADD` | "Agrega una Coca-Cola" |
+| `CART_VIEW` | "¿Qué tengo en el carrito?" |
+| `CART_CHECKOUT` | "Confirmar pedido, listo" |
+| `CART_CLEAR` | "Cancelar, empezar de nuevo" |
 | `HOURS_QUERY` | "¿A qué hora abren?" |
 | `LOCATION_QUERY` | "¿Dónde están ubicados?" |
 | `HUMAN_SUPPORT` | "Quiero hablar con alguien" |
 | `GREETING` | "Hola buenos días" |
+| `UNKNOWN` | → respuesta de ayuda genérica |
 
-## Stack tecnológico
-
-| Capa | Tecnología |
-|---|---|
-| Backend | **FastAPI** (async) |
-| Base de datos | **PostgreSQL** + SQLAlchemy async |
-| IA | **OpenAI** gpt-4o-mini (structured outputs) |
-| WhatsApp | **Meta Cloud API** |
-| Containerización | **Docker** + docker-compose |
-
-## Instalación rápida (desarrollo)
-
-### 1. Clonar y configurar entorno
+## Inicio rápido con Docker (recomendado)
 
 ```bash
-git clone <repo>
-cd 24challenge
-python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # Linux/Mac
-pip install -r requirements.txt
-```
+git clone https://github.com/nreveco/wsp-engiener-intents-response-ia.git
+cd wsp-engiener-intents-response-ia
 
-### 2. Variables de entorno
-
-```bash
 cp .env.example .env
-# Editar .env con tus claves reales:
-# - OPENAI_API_KEY
-# - WHATSAPP_TOKEN
-# - WHATSAPP_PHONE_NUMBER_ID
-# - WHATSAPP_VERIFY_TOKEN
-# - ADMIN_API_KEY
+# Editar .env: completar WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID,
+#              WHATSAPP_VERIFY_TOKEN y ADMIN_API_KEY
+
+# Con qwen2.5:7b (~4.7 GB, recomendado):
+docker compose up -d
+
+# Con llama3.2:3b (~2 GB, más rápido):
+OLLAMA_MODEL=llama3.2:3b docker compose up -d
 ```
 
-### 3. Levantar PostgreSQL
+El servicio `ollama-init` descarga el modelo automáticamente al primer arranque.  
+API disponible en `http://localhost:8000` · Docs en `http://localhost:8000/docs`
+
+## Instalación local (desarrollo sin Docker)
 
 ```bash
-docker-compose up db -d
-```
+python -m venv venv
+.\venv\Scripts\activate          # Windows
+# source venv/bin/activate       # Linux/Mac
 
-### 4. Iniciar servidor
+pip install -r requirements.txt
 
-```bash
+# Instalar Ollama desde https://ollama.com y descargar modelo:
+ollama pull qwen2.5:7b
+
+# Copiar y editar variables de entorno:
+cp .env.example .env
+# Cambiar OLLAMA_BASE_URL=http://localhost:11434/v1
+# Cambiar DATABASE_URL para apuntar a localhost
+
 uvicorn app.main:app --reload
 ```
 
 Las tablas se crean automáticamente al iniciar.
 
-### 5. Cargar datos demo (restaurante de ejemplo)
+## Variables de entorno
+
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `OLLAMA_BASE_URL` | URL de la API Ollama | `http://ollama:11434/v1` |
+| `OLLAMA_MODEL` | Modelo de texto | `qwen2.5:7b` |
+| `OLLAMA_VISION_MODEL` | Modelo de visión | `llava:7b` |
+| `WHATSAPP_TOKEN` | Token Meta Cloud API | `EAAxxxx...` |
+| `WHATSAPP_PHONE_NUMBER_ID` | ID del número WhatsApp | `123456789012` |
+| `WHATSAPP_VERIFY_TOKEN` | Token de verificación del webhook | cualquier string secreto |
+| `DATABASE_URL` | Conexión PostgreSQL | `postgresql+asyncpg://...` |
+| `ADMIN_API_KEY` | Clave para endpoints `/admin/*` | string seguro |
+
+## Configurar webhook en Meta
+
+1. Exponer el servidor: `ngrok http 8000`
+2. En [developers.facebook.com](https://developers.facebook.com) → App → WhatsApp → Webhooks
+3. URL: `https://<ngrok>.ngrok-free.app/webhook/<PHONE_NUMBER_ID>`
+4. Token de verificación: valor de `WHATSAPP_VERIFY_TOKEN`
+5. Suscribir a: `messages`
+
+## Datos de demo
 
 ```bash
-python seed_demo.py
+python seed_demo.py       # carga un restaurante de ejemplo con productos
+python test_pipeline.py   # prueba el pipeline sin WhatsApp
 ```
-
-### 6. Probar el pipeline SIN WhatsApp
-
-```bash
-python test_pipeline.py
-```
-
-## Instalación completa con Docker
-
-```bash
-cp .env.example .env
-# Editar .env
-
-docker-compose up --build
-```
-
-API disponible en `http://localhost:8000`  
-Docs interactivos en `http://localhost:8000/docs`
-
-## Configurar el webhook en Meta
-
-1. Ve a [developers.facebook.com](https://developers.facebook.com)
-2. App → WhatsApp → Configuración → Webhooks
-3. URL del webhook: `https://tudominio.com/webhook/{PHONE_NUMBER_ID}`
-4. Token de verificación: el valor de `WHATSAPP_VERIFY_TOKEN` en tu `.env`
-5. Suscríbete a: `messages`
-
-> **Tip**: Para desarrollo local usa [ngrok](https://ngrok.com):  
-> `ngrok http 8000`  
-> La URL pública que da ngrok va como webhook en Meta.
 
 ## API de administración
 
-Todos los endpoints del panel admin requieren el header:
-```
-X-Admin-Key: <tu ADMIN_API_KEY>
-```
-
-### Endpoints principales
+Todos los endpoints requieren el header `X-Admin-Key: <ADMIN_API_KEY>`.  
+Documentación interactiva completa en `/docs`.
 
 ```
-POST   /admin/businesses                           Crear negocio
-GET    /admin/businesses                           Listar negocios
-PATCH  /admin/businesses/{id}                      Actualizar negocio
-
-POST   /admin/businesses/{id}/categories           Crear categoría
-POST   /admin/businesses/{id}/products             Crear producto
-PATCH  /admin/businesses/{id}/products/{pid}       Actualizar producto
-DELETE /admin/businesses/{id}/products/{pid}       Eliminar producto
-
-GET    /admin/businesses/{id}/orders               Ver pedidos
-PATCH  /admin/businesses/{id}/orders/{oid}/status  Actualizar estado pedido
-
-GET    /admin/businesses/{id}/bookings             Ver reservas
-PATCH  /admin/businesses/{id}/bookings/{bid}/status Confirmar/cancelar reserva
-
-GET    /admin/businesses/{id}/leads                Ver leads
-GET    /admin/businesses/{id}/conversations        Ver conversaciones
-GET    /admin/businesses/{id}/dashboard            Dashboard resumen
+POST   /admin/businesses                            Crear negocio
+GET    /admin/businesses/{id}/products              Listar productos
+POST   /admin/businesses/{id}/products              Crear producto
+GET    /admin/businesses/{id}/orders                Ver pedidos
+PATCH  /admin/businesses/{id}/orders/{oid}/status   Actualizar estado pedido
+GET    /admin/businesses/{id}/bookings              Ver reservas
+GET    /admin/businesses/{id}/quotes                Ver cotizaciones
+GET    /admin/businesses/{id}/leads                 Ver leads
+GET    /admin/businesses/{id}/dashboard             Dashboard resumen
 ```
 
-### Ejemplo: registrar un negocio
+## Tipos de mensaje soportados
 
-```bash
-curl -X POST http://localhost:8000/admin/businesses \
-  -H "X-Admin-Key: tu_admin_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Mi Restaurante",
-    "phone_number_id": "1234567890",
-    "whatsapp_token": "EAAxxxx...",
-    "business_type": "restaurant",
-    "welcome_message": "¡Hola! ¿En qué te ayudo?",
-    "human_support_phone": "+56912345678",
-    "address": "Av. Principal 123",
-    "city": "Santiago",
-    "hours": {
-      "lunes": "09:00-22:00",
-      "martes": "09:00-22:00",
-      "sábado": "10:00-23:00"
-    }
-  }'
-```
+| Tipo | Procesamiento |
+|---|---|
+| Texto / botones | Directo al clasificador |
+| Audio 🎙️ (OGG/MP3/WAV) | faster-whisper local → texto |
+| Imagen 🖼️ (JPEG/PNG/WEBP) | Ollama Vision → descripción de intención |
+| PDF 📄 | pypdf → texto extraído |
 
 ## Multi-tenant
 
-El sistema soporta **múltiples negocios** en una sola instancia.  
-Cada negocio tiene su propio `phone_number_id` de Meta y sus propios productos, pedidos y conversaciones.
-
-## Nichos ideales para vender
-
-- 🍔 **Restaurantes y fuentes de soda** — menú, precios, pedidos
-- ☕ **Cafeterías** — carta, horarios, reservas de mesa  
-- 🔧 **Talleres mecánicos** — cotizaciones, agendamiento de servicios
-- 🏥 **Clínicas y centros médicos** — agendar horas, precios de consultas
-- 🏪 **Tiendas y botillerías** — stock, precios, pedidos
-- 🏗️ **Constructoras y ferreterías** — cotizaciones, disponibilidad
+Una sola instancia soporta **múltiples negocios**. Cada negocio tiene su propio `phone_number_id`, catálogo, pedidos y conversaciones.
 
 ## Estructura del proyecto
 
 ```
 app/
-├── main.py              # FastAPI app + lifespan
-├── config.py            # Variables de entorno (pydantic-settings)
 ├── ai/
-│   ├── intent_classifier.py   # OpenAI → ExtractedIntent (structured output)
-│   └── response_builder.py    # OpenAI → texto natural con datos reales
+│   ├── intent_classifier.py   # Ollama JSON mode → ExtractedIntent (Pydantic)
+│   ├── response_builder.py    # Ollama → texto natural con datos reales
+│   └── media_processor.py     # faster-whisper / Ollama Vision / pypdf
 ├── db/
-│   ├── database.py      # Motor async SQLAlchemy
-│   └── models.py        # ORM: Business, Product, Order, Booking, Lead, ...
-├── intents/
-│   └── definitions.py   # Enum Intent + Pydantic ExtractedIntent
-├── prompts/
-│   └── templates.py     # System prompts para clasificador y builder
-├── routers/
-│   ├── webhook.py       # POST /webhook/{phone_number_id} — pipeline principal
-│   └── admin.py         # Panel de administración con API Key
+│   ├── database.py            # Motor async SQLAlchemy
+│   └── models.py              # ORM: Business, Product, Order, Booking, Lead…
 ├── services/
-│   ├── products.py      # Búsqueda de productos en DB real
-│   ├── orders.py        # Crear y consultar pedidos
-│   ├── bookings.py      # Registrar reservas
-│   ├── leads.py         # Captura de leads
-│   └── handoff.py       # Derivar a humano
-├── whatsapp/
-│   └── gateway.py       # Meta Cloud API — envío de mensajes
-└── models/
-    └── schemas.py       # Schemas Pydantic para la API admin
+│   ├── products.py / orders.py / bookings.py
+│   ├── cart.py / quotes.py / leads.py / handoff.py
+│   └── notifications.py
+├── routers/
+│   ├── webhook.py             # POST /webhook/{phone_number_id}
+│   └── admin.py               # Panel admin (API Key protegido)
+└── whatsapp/
+    ├── gateway.py             # Meta Cloud API — envío de mensajes
+    ├── interactive.py         # Botones y listas interactivas
+    └── media.py               # Descarga de audio/imagen/PDF
 ```
+
+## Nichos ideales
+
+- 🍔 Restaurantes y fuentes de soda — menú, precios, pedidos, reservas
+- ☕ Cafeterías — carta, horarios, reservas de mesa
+- 🔧 Talleres mecánicos — cotizaciones, agendamiento
+- 🏥 Clínicas — agendar horas, precios de consultas
+- 🏪 Tiendas — stock, precios, pedidos delivery
+- 🏗️ Constructoras — cotizaciones, disponibilidad de materiales
 
 ## Licencia
 
 MIT
-# wsp-engiener-intents-response-ia
