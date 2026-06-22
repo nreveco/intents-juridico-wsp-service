@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings
+import os
 
 
 class Settings(BaseSettings):
-    # Ollama (LLM local)
+    # Ollama (LLM local o servidor externo)
     ollama_base_url: str = "http://localhost:11434/v1"
     ollama_model: str = "qwen2.5:7b"
     ollama_vision_model: str = "llava:7b"
@@ -21,8 +22,14 @@ class Settings(BaseSettings):
     # App
     debug: bool = False
     environment: str = "development"
+    port: int = 8000
 
     model_config = {"env_file": ".env", "extra": "ignore"}
+
+    @property
+    def is_production(self) -> bool:
+        """Detecta si está corriendo en Railway"""
+        return self.environment == "production" or os.getenv("RAILWAY_ENVIRONMENT") is not None
 
 
 settings = Settings()
