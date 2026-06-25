@@ -33,7 +33,10 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 
 async def seed():
     from app.db.database import init_db
-    from app.db.models import Business, BusinessSettings, Category, Product, BusinessType
+    from app.db.models import (
+        Business, BusinessSettings, BusinessType,
+        LegalCategory, LegalService, LegalArea, FeeStructure
+    )
 
     print("⚖️  Inicializando base de datos para Mediaciones RJZ...")
     await init_db()
@@ -47,7 +50,7 @@ async def seed():
             name="Mediaciones RJZ",
             phone_number_id="DEMO_PHONE_NUMBER_ID",  # ⚠️ Reemplazar con Phone Number ID real de Meta
             whatsapp_token="DEMO_TOKEN",              # ⚠️ Reemplazar con Token real de Meta
-            business_type=BusinessType.OTHER,         # Usamos OTHER hasta agregar LAW_FIRM al enum
+            business_type=BusinessType.LAW_FIRM,      # ✅ Ahora usamos LAW_FIRM
             welcome_message=(
                 "¡Hola! Bienvenido a *Mediaciones RJZ* ⚖️\n\n"
                 "Somos un estudio jurídico especializado en:\n"
@@ -82,11 +85,11 @@ async def seed():
         )
         db.add(biz_settings)
 
-        # ── Categorías Legales (usando tabla Category existente) ────────────
-        # NOTA: En producción, esto debería ser LegalCategory con más campos
+        # ── Categorías Legales (usando LegalCategory) ────────────
         categories_data = [
             {
-                "name": "Derecho Penal ⚖️",
+                "area": LegalArea.PENAL,
+                "name": "Derecho Penal",
                 "description": (
                     "Defensa penal en todas las etapas del proceso. "
                     "Especialistas en Ley 20.000, VIF, delitos contra las personas, "
@@ -94,14 +97,16 @@ async def seed():
                 )
             },
             {
-                "name": "Derecho de Familia 👨‍👩‍👧",
+                "area": LegalArea.FAMILIA,
+                "name": "Derecho de Familia",
                 "description": (
                     "Mediación familiar, custodia de menores, pensión alimenticia, "
                     "regulación de visitas, y casos de VIF con peritaje psicosocial."
                 )
             },
             {
-                "name": "Derecho Civil 📋",
+                "area": LegalArea.CIVIL,
+                "name": "Derecho Civil",
                 "description": (
                     "Contratos, compraventa de inmuebles, cobranza judicial, "
                     "escrituras públicas y asesoría en trámites civiles."
@@ -113,21 +118,21 @@ async def seed():
         for cat_data in categories_data:
             cat_id = str(uuid.uuid4())
             categories[cat_data["name"]] = cat_id
-            db.add(Category(
+            db.add(LegalCategory(
                 id=cat_id,
                 business_id=business_id,
+                area=cat_data["area"],
                 name=cat_data["name"],
                 description=cat_data["description"],
                 is_active=True,
             ))
 
-        # ── "Productos" (Servicios Legales) ─────────────────────────────────
-        # NOTA: Usamos tabla Product existente temporalmente.
-        # En producción esto debe ser LegalService con campos específicos:
-        # - typical_duration, complexity, requires_evaluation, base_info, etc.
-        #
-        # El campo "price" aquí representa el precio BASE de referencia (no final).
-        # Los honorarios reales varían según complejidad del caso.
+        # ── Servicios Legales (usando LegalService) ─────────────────────────────────
+        # Cada servicio tiene:
+        # - name, description
+        # - base_price (orientativo, puede variar según complejidad)
+        # - estimated_timeframe (duración típica del proceso)
+        # - requirements (requisitos generales)
 
         services = [
             # ─── DERECHO PENAL ──────────────────────────────────────────────
@@ -136,72 +141,69 @@ async def seed():
                 (
                     "Defensa especializada en casos de tráfico y microtráfico de drogas. "
                     "Incluye: análisis de pruebas, estrategia de defensa, audiencias, "
-                    "negociación con fiscalía. "
-                    "Duración típica: 3-6 meses. "
-                    "Casos atendidos: Art. 3° (microtráfico), Art. 4° (tráfico simple), "
-                    "Art. 5° (tráfico agravado). "
-                    "⚠️ Evaluación gratuita del caso."
+                    "negociación con fiscalía."
                 ),
                 800000,  # Precio base referencial
-                "Derecho Penal ⚖️"
+                "3-6 meses",
+                "Casos atendidos: Art. 3° (microtráfico), Art. 4° (tráfico simple), Art. 5° (tráfico agravado). ⚠️ Evaluación gratuita del caso.",
+                "Derecho Penal"
             ),
             (
                 "Defensa en VIF (Violencia Intrafamiliar)",
                 (
                     "Defensa en casos de violencia intrafamiliar. "
                     "Incluye: representación en audiencias, coordinación con peritaje psicosocial, "
-                    "estrategia de defensa o acuerdos reparatorios. "
-                    "Duración típica: 2-4 meses. "
-                    "Atendemos tanto a víctimas como a imputados."
+                    "estrategia de defensa o acuerdos reparatorios."
                 ),
                 600000,
-                "Derecho Penal ⚖️"
+                "2-4 meses",
+                "Atendemos tanto a víctimas como a imputados.",
+                "Derecho Penal"
             ),
             (
                 "Delitos contra las Personas",
                 (
                     "Defensa en homicidio, lesiones, amenazas y otros delitos contra las personas. "
-                    "Incluye: estrategia de defensa, recursos, audiencias. "
-                    "Duración típica: 4-8 meses según gravedad. "
-                    "Atención urgente para casos con prisión preventiva."
+                    "Incluye: estrategia de defensa, recursos, audiencias."
                 ),
                 1200000,
-                "Derecho Penal ⚖️"
+                "4-8 meses",
+                "Atención urgente para casos con prisión preventiva.",
+                "Derecho Penal"
             ),
             (
                 "Beneficios Penitenciarios",
                 (
                     "Tramitación de libertad condicional, reclusión nocturna, "
-                    "salidas dominicales y otros beneficios de Ley 18.216. "
-                    "Incluye: evaluación de requisitos, preparación de antecedentes, "
-                    "audiencia ante el juez. "
-                    "Duración: 1-2 meses. "
-                    "⚠️ Requisitos: cumplir parte de condena, no tener sanciones."
+                    "salidas dominicales y otros beneficios de Ley 18.216."
                 ),
                 450000,
-                "Derecho Penal ⚖️"
+                "1-2 meses",
+                "Requisitos: cumplir parte de condena, no tener sanciones, buena conducta.",
+                "Derecho Penal"
             ),
             (
                 "Apelaciones y Recursos Penales",
                 (
                     "Recursos de apelación, nulidad y amparo en materia penal. "
                     "Incluye: análisis de sentencia, fundamentación del recurso, "
-                    "audiencia ante Corte de Apelaciones. "
-                    "Duración: 2-4 meses."
+                    "audiencia ante Corte de Apelaciones."
                 ),
                 700000,
-                "Derecho Penal ⚖️"
+                "2-4 meses",
+                "Requiere sentencia dictada. Plazos legales estrictos.",
+                "Derecho Penal"
             ),
             (
                 "Calumnias e Injurias",
                 (
                     "Querella o defensa en casos de calumnias e injurias. "
-                    "Común en contextos de VIF o conflictos laborales/familiares. "
-                    "Incluye: redacción de querella, representación en audiencias. "
-                    "Duración: 3-5 meses."
+                    "Común en contextos de VIF o conflictos laborales/familiares."
                 ),
                 500000,
-                "Derecho Penal ⚖️"
+                "3-5 meses",
+                "Requiere presentar pruebas del daño o defensa de la acusación.",
+                "Derecho Penal"
             ),
             
             # ─── DERECHO DE FAMILIA ─────────────────────────────────────────
@@ -209,45 +211,46 @@ async def seed():
                 "Mediación Familiar",
                 (
                     "Proceso de mediación obligatoria para alimentos, custodia y visitas. "
-                    "Facilitamos acuerdos entre las partes evitando litigio. "
-                    "Incluye: sesiones de mediación, redacción de acuerdos. "
-                    "Duración: 1-2 meses. "
-                    "Requisito previo a demandas de familia."
+                    "Facilitamos acuerdos entre las partes evitando litigio."
                 ),
                 300000,
-                "Derecho de Familia 👨‍👩‍👧"
+                "1-2 meses",
+                "Requisito previo a demandas de familia. Incluye sesiones de mediación.",
+                "Derecho de Familia"
             ),
             (
                 "Custodia y Cuidado Personal",
                 (
                     "Demanda o defensa en casos de custodia de menores. "
                     "Incluye: mediación previa, demanda judicial, peritaje psicosocial, "
-                    "audiencias preparatorias y de juicio. "
-                    "Duración: 4-8 meses."
+                    "audiencias preparatorias y de juicio."
                 ),
                 800000,
-                "Derecho de Familia 👨‍👩‍👧"
+                "4-8 meses",
+                "Requiere mediación previa. Puede incluir peritaje psicológico del menor.",
+                "Derecho de Familia"
             ),
             (
                 "Pensión de Alimentos",
                 (
                     "Demanda de pensión alimenticia para hijos o defensa. "
-                    "Incluye: cálculo de pensión, mediación, audiencias. "
-                    "Duración: 3-5 meses. "
-                    "Se puede solicitar pensión provisoria urgente."
+                    "Incluye: cálculo de pensión, mediación, audiencias."
                 ),
                 400000,
-                "Derecho de Familia 👨‍👩‍👧"
+                "3-5 meses",
+                "Se puede solicitar pensión provisoria urgente. Requiere mediación previa.",
+                "Derecho de Familia"
             ),
             (
                 "Regulación de Visitas (Relación Directa y Regular)",
                 (
                     "Establecimiento o modificación del régimen de visitas. "
-                    "Incluye: mediación, demanda judicial si no hay acuerdo. "
-                    "Duración: 2-4 meses."
+                    "Incluye: mediación, demanda judicial si no hay acuerdo."
                 ),
                 350000,
-                "Derecho de Familia 👨‍👩‍👧"
+                "2-4 meses",
+                "Busca establecer relación estable entre padre/madre e hijo.",
+                "Derecho de Familia"
             ),
 
             # ─── DERECHO CIVIL ──────────────────────────────────────────────
@@ -255,44 +258,45 @@ async def seed():
                 "Cobranza Judicial",
                 (
                     "Cobranza de deudas mediante juicio ejecutivo o cobranza ordinaria. "
-                    "Incluye: demanda, embargo, remate si es necesario. "
-                    "Duración: 4-12 meses según complejidad. "
-                    "Honorarios variables según monto a cobrar."
+                    "Incluye: demanda, embargo, remate si es necesario."
                 ),
                 400000,  # Puede ser % del monto recuperado
-                "Derecho Civil 📋"
+                "4-12 meses",
+                "Honorarios variables según monto a cobrar. Requiere título ejecutivo.",
+                "Derecho Civil"
             ),
             (
                 "Compraventa de Inmuebles - Escrituración",
                 (
                     "Redacción y tramitación de escrituras de compraventa. "
-                    "Incluye: revisión de títulos, inscripción en Conservador de Bienes Raíces. "
-                    "Duración: 1-2 meses. "
-                    "⚠️ No incluye impuestos ni tasas notariales (corren por cuenta del cliente)."
+                    "Incluye: revisión de títulos, inscripción en Conservador de Bienes Raíces."
                 ),
                 350000,
-                "Derecho Civil 📋"
+                "1-2 meses",
+                "No incluye impuestos ni tasas notariales (corren por cuenta del cliente).",
+                "Derecho Civil"
             ),
             (
                 "Regularización de Propiedades",
                 (
                     "Tramitación de posesión efectiva, inscripciones pendientes, "
-                    "saneamiento de títulos. "
-                    "Incluye: búsqueda de antecedentes, gestiones ante Conservador. "
-                    "Duración: 3-6 meses."
+                    "saneamiento de títulos."
                 ),
                 600000,
-                "Derecho Civil 📋"
+                "3-6 meses",
+                "Búsqueda de antecedentes, gestiones ante Conservador de Bienes Raíces.",
+                "Derecho Civil"
             ),
             (
                 "Redacción de Contratos",
                 (
                     "Redacción y revisión de contratos (arriendo, compraventa, prestación de servicios). "
-                    "Incluye: análisis de cláusulas, asesoría legal. "
-                    "Entrega: 1-2 semanas."
+                    "Incluye: análisis de cláusulas, asesoría legal."
                 ),
                 200000,
-                "Derecho Civil 📋"
+                "1-2 semanas",
+                "Entrega rápida. Consulta gratuita para evaluar necesidades.",
+                "Derecho Civil"
             ),
 
             # ─── OTROS SERVICIOS ────────────────────────────────────────────
@@ -301,33 +305,37 @@ async def seed():
                 (
                     "Reunión presencial de 1 hora con abogado especialista. "
                     "Evaluación de tu caso, estrategia legal recomendada, "
-                    "presupuesto detallado. "
-                    "⚠️ PRIMERA CONSULTA GRATUITA para nuevos clientes."
+                    "presupuesto detallado."
                 ),
                 50000,  # Consultas posteriores tienen costo
-                "Derecho Penal ⚖️"  # Se puede asociar a cualquier categoría
+                "1 hora",
+                "⚠️ PRIMERA CONSULTA GRATUITA para nuevos clientes.",
+                "Derecho Penal"  # Se puede asociar a cualquier categoría
             ),
             (
                 "Traslado de Imputados",
                 (
                     "Coordinación de traslado de imputados detenidos a audiencias u otras diligencias. "
-                    "Incluye: gestión con Gendarmería, seguimiento del traslado. "
-                    "⚠️ Servicio de emergencia - disponibilidad inmediata."
+                    "Incluye: gestión con Gendarmería, seguimiento del traslado."
                 ),
                 400000,
-                "Derecho Penal ⚖️"
+                "Inmediato",
+                "⚠️ Servicio de emergencia - disponibilidad inmediata.",
+                "Derecho Penal"
             ),
         ]
 
         total_services = 0
-        for name, description, base_price, category_name in services:
-            db.add(Product(
+        for name, description, base_price, timeframe, requirements, category_name in services:
+            db.add(LegalService(
                 id=str(uuid.uuid4()),
                 business_id=business_id,
                 category_id=categories[category_name],
                 name=name,
                 description=description,
-                price=base_price,
+                base_price=base_price,
+                estimated_timeframe=timeframe,
+                requirements=requirements,
                 is_available=True,
             ))
             total_services += 1
@@ -336,26 +344,36 @@ async def seed():
 
         # ── Resumen ─────────────────────────────────────────────────────────
         print("\n" + "="*70)
-        print("✅ SEED COMPLETADO EXITOSAMENTE")
+        print("✅ SEED COMPLETADO EXITOSAMENTE - SISTEMA LEGAL")
         print("="*70)
         print(f"📋 Negocio creado:")
         print(f"   Nombre    : Mediaciones RJZ")
         print(f"   ID        : {business_id}")
-        print(f"   Tipo      : Estudio Jurídico")
+        print(f"   Tipo      : LAW_FIRM (Estudio Jurídico)")
         print(f"   Ciudad    : Santiago")
         print(f"   Contacto  : +56912345678")
         print(f"\n⚖️  Áreas legales : {len(categories)}")
         for cat_name in categories.keys():
             print(f"   • {cat_name}")
         print(f"\n📦 Servicios legales : {total_services}")
+        print(f"\n✅ MODELOS ACTUALIZADOS:")
+        print(f"   • Business → business_type=LAW_FIRM")
+        print(f"   • LegalCategory (reemplaza Category)")
+        print(f"   • LegalService (reemplaza Product)")
+        print(f"   • Con campos: estimated_timeframe, requirements")
         print(f"\n⚠️  PRÓXIMOS PASOS:")
-        print(f"   1. Actualizar phone_number_id y whatsapp_token con valores REALES")
-        print(f"   2. Usar API admin: PATCH /admin/businesses/{business_id}")
-        print(f"   3. Modificar intents en app/intents/definitions.py para contexto legal")
-        print(f"   4. Adaptar prompts en app/prompts/templates.py")
-        print(f"   5. Crear servicios: legal_services.py, case_inquiries.py, fee_info.py")
+        print(f"   1. Completar PASO 5: webhook.py con función _route_intent legal")
+        print(f"   2. Actualizar phone_number_id y whatsapp_token con valores REALES")
+        print(f"      Usar API admin: PATCH /admin/businesses/{business_id}")
+        print(f"   3. Probar con mensajes de prueba:")
+        print(f"      • 'Hola, quiero información'")
+        print(f"      • '¿Ven temas penales?'")
+        print(f"      • 'Tengo un caso de tráfico de drogas'")
+        print(f"      • '¿Cuánto cobran?'")
+        print(f"   4. Ejecutar migraciones de base de datos si es necesario")
         print("\n" + "="*70)
-        print("📖 Consulta ANALISIS_ESTUDIO_JURIDICO.md para el roadmap completo")
+        print("📖 Consulta RESUMEN_EJECUTIVO_RJZ.md para el roadmap completo")
+        print("📖 Ver COMPLETAR_PASO_5_MANUAL.md para finalizar webhook.py")
         print("="*70 + "\n")
 
 

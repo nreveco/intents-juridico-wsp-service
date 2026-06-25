@@ -12,21 +12,17 @@ from app.db.database import get_db
 from app.db.models import (
     Business,
     BusinessSettings,
-    Category,
+    LegalCategory,
     Conversation,
     ConversationStatus,
     Message,
 )
 from app.intents.definitions import Intent
-from app.services import bookings, cart, handoff, leads, notifications, orders, products, quotes
+from app.services import bookings, handoff, leads, notifications, quotes
+from app.services import legal_services, case_inquiries, fee_info
 from app.ai.media_processor import analyze_image, extract_pdf_text, transcribe_audio
 from app.whatsapp.gateway import mark_as_read, send_text_message
 from app.whatsapp.media import download_media
-from app.whatsapp.interactive import (
-    send_catalog_list,
-    send_order_confirmation_buttons,
-    send_welcome_buttons,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +112,7 @@ async def receive_message(
         elif wa_message_type == "interactive":
             inter = wa_message.get("interactive", {})
             if inter.get("type") == "button_reply":
-                message_text = _map_button_id(inter["button_reply"]["id"])
+                message_text = inter["button_reply"].get("title", "")
             elif inter.get("type") == "list_reply":
                 message_text = inter["list_reply"].get("title", "")
             else:
@@ -222,9 +218,9 @@ async def receive_message(
         return {"status": "human_handoff_active"}
 
     # ── Contexto del negocio para la IA ──────────────────────────
-    cat_stmt = select(Category.name).where(
-        Category.business_id == business.id,
-        Category.is_active == True,
+    cat_stmt = select(LegalCategory.name).where(
+        LegalCategory.business_id == business.id,
+        LegalCategory.is_active == True,
     )
     cat_result = await db.execute(cat_stmt)
     category_names = [row[0] for row in cat_result.all()]

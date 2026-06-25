@@ -31,6 +31,7 @@ class BusinessType(str, enum.Enum):
     CLINIC = "clinic"
     CONSTRUCTION = "construction"
     LIQUOR_STORE = "liquor_store"
+    LAW_FIRM = "law_firm"
     OTHER = "other"
 
 
@@ -38,15 +39,6 @@ class ConversationStatus(str, enum.Enum):
     ACTIVE = "active"
     HUMAN_HANDOFF = "human_handoff"
     CLOSED = "closed"
-
-
-class OrderStatus(str, enum.Enum):
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    PREPARING = "preparing"
-    READY = "ready"
-    DELIVERED = "delivered"
-    CANCELLED = "cancelled"
 
 
 class BookingStatus(str, enum.Enum):
@@ -60,6 +52,26 @@ class QuoteStatus(str, enum.Enum):
     SENT = "sent"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+class LegalArea(str, enum.Enum):
+    PENAL = "penal"
+    FAMILIA = "familia"
+    CIVIL = "civil"
+
+
+class CaseUrgency(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class CaseInquiryStatus(str, enum.Enum):
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    CLOSED = "closed"
 
 
 # ──────────────────────────────────────────────────────────────
@@ -83,13 +95,13 @@ class Business(Base):
 
     # Relationships
     settings = relationship("BusinessSettings", back_populates="business", uselist=False, cascade="all, delete-orphan")
-    categories = relationship("Category", back_populates="business", cascade="all, delete-orphan")
-    products = relationship("Product", back_populates="business", cascade="all, delete-orphan")
+    legal_categories = relationship("LegalCategory", back_populates="business", cascade="all, delete-orphan")
+    legal_services = relationship("LegalService", back_populates="business", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="business", cascade="all, delete-orphan")
-    orders = relationship("Order", back_populates="business", cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="business", cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="business", cascade="all, delete-orphan")
     quotes = relationship("Quote", back_populates="business", cascade="all, delete-orphan")
+    case_inquiries = relationship("CaseInquiry", back_populates="business", cascade="all, delete-orphan")
 
 
 class BusinessSettings(Base):
@@ -112,37 +124,65 @@ class BusinessSettings(Base):
 
 
 # ──────────────────────────────────────────────────────────────
-# Catalog
+# Legal Catalog (reemplaza Category/Product)
 # ──────────────────────────────────────────────────────────────
 
-class Category(Base):
-    __tablename__ = "categories"
+class LegalCategory(Base):
+    __tablename__ = "legal_categories"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     business_id = Column(String(36), ForeignKey("businesses.id"), nullable=False)
+    area = Column(SAEnum(LegalArea), nullable=False)
     name = Column(String(100), nullable=False)
     description = Column(Text)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    business = relationship("Business", back_populates="categories")
-    products = relationship("Product", back_populates="category")
+    business = relationship("Business", back_populates="legal_categories")
+    services = relationship("LegalService", back_populates="category")
 
 
-class Product(Base):
-    __tablename__ = "products"
+class LegalService(Base):
+    __tablename__ = "legal_services"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     business_id = Column(String(36), ForeignKey("businesses.id"), nullable=False)
-    category_id = Column(String(36), ForeignKey("categories.id"), nullable=True)
+    category_id = Column(String(36), ForeignKey("legal_categories.id"), nullable=True)
 
     name = Column(String(200), nullable=False)
     description = Column(Text)
-    price = Column(Float, nullable=False)
+    # Precio base orientativo (puede variar según caso)
+    base_price = Column(Float, nullable=True)
+    # Tiempo estimado (ej: "2-4 semanas", "3-6 meses")
+    estimated_timeframe = Column(String(100))
+    # Requisitos generales
+    requirements = Column(Text)
     is_available = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    business = relationship("Business", back_populates="products")
-    category = relationship("Category", back_populates="products")
+    business = relationship("Business", back_populates="legal_services")
+    category = relationship("LegalCategory", back_populates="services")
+
+
+class FeeStructure(Base):
+    __tablename__ = "fee_structures"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    business_id = Column(String(36), ForeignKey("businesses.id"), nullable=False)
+    
+    # Tipo de servicio (ej: "Ley 20.000", "VIF", "Mediación Familiar")
+    service_type = Column(String(200), nullable=False)
+    # Descripción de los honorarios
+    description = Column(Text)
+    # Rango de precio mínimo-máximo
+    min_price = Column(Float, nullable=True)
+    max_price = Column(Float, nullable=True)
+    # Opciones de pago (JSON: ["Transferencia", "Efectivo", "Tarjeta"])
+    payment_options = Column(JSON, default=list)
+    # Facilidades de pago disponibles
+    payment_facilities = Column(Text)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 # ──────────────────────────────────────────────────────────────
@@ -181,36 +221,39 @@ class Message(Base):
 
 
 # ──────────────────────────────────────────────────────────────
-# Orders
+# Case Inquiries (Consultas de Casos - reemplaza Orders)
 # ──────────────────────────────────────────────────────────────
 
-class Order(Base):
-    __tablename__ = "orders"
+class CaseInquiry(Base):
+    __tablename__ = "case_inquiries"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     business_id = Column(String(36), ForeignKey("businesses.id"), nullable=False)
     customer_phone = Column(String(50), nullable=False)
     customer_name = Column(String(200))
-    status = Column(SAEnum(OrderStatus), default=OrderStatus.PENDING)
-    total = Column(Float, default=0.0)
+    
+    # Área legal (penal, familia, civil)
+    legal_area = Column(SAEnum(LegalArea), nullable=True)
+    # Asunto legal específico (ej: "tráfico de drogas", "VIF")
+    legal_matter = Column(String(200))
+    # Descripción del caso
+    description = Column(Text)
+    
+    # Urgencia del caso
+    urgency = Column(SAEnum(CaseUrgency), default=CaseUrgency.MEDIUM)
+    # Si está detenido
+    is_detained = Column(Boolean, default=False)
+    # Si tiene antecedentes previos
+    has_prior_record = Column(Boolean, nullable=True)
+    # Tipo de beneficio buscado (ej: "libertad condicional")
+    benefit_type = Column(String(200), nullable=True)
+    
+    status = Column(SAEnum(CaseInquiryStatus), default=CaseInquiryStatus.PENDING)
     notes = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    business = relationship("Business", back_populates="orders")
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-
-
-class OrderItem(Base):
-    __tablename__ = "order_items"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String(36), ForeignKey("orders.id"), nullable=False)
-    product_id = Column(String(36), ForeignKey("products.id"), nullable=True)
-    product_name = Column(String(200), nullable=False)
-    quantity = Column(Integer, default=1)
-    unit_price = Column(Float, nullable=False)
-
-    order = relationship("Order", back_populates="items")
+    business = relationship("Business", back_populates="case_inquiries")
 
 
 # ──────────────────────────────────────────────────────────────
