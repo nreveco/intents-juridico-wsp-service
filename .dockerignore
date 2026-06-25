@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Environment
+.env
+.env.*
+!.env.example
+!.env.railway.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Testing
+test_*.py
+*_test.py
+
+# Documentation
+*.md
+!README.md
+
+# Scripts
+docker-rebuild.*
+test.cmd
+test.ps1
+
+# Logs
+*.log
+logs/

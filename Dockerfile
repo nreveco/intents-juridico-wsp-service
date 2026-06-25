@@ -2,9 +2,9 @@ FROM python:3.12-slim
 
 WORKDIR /code
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema necesarias
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
