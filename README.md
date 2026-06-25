@@ -57,25 +57,35 @@ WhatsApp → Cliente
 | `GREETING` | "Hola buenos días" |
 | `UNKNOWN` | → respuesta de ayuda genérica |
 
-## Inicio rápido con Docker (recomendado)
+## 🚀 Inicio rápido con Docker
+
+### Windows
 
 ```bash
-git clone https://github.com/nreveco/wsp-engiener-intents-response-ia.git
-cd wsp-engiener-intents-response-ia
+# 1. Configurar variables de entorno
+copy .env.example .env
+# Editar .env con tus credenciales
 
-cp .env.example .env
-# Editar .env: completar WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID,
-#              WHATSAPP_VERIFY_TOKEN y ADMIN_API_KEY
+# 2. Levantar todo
+docker-rebuild.cmd
 
-# Con qwen2.5:7b (~4.7 GB, recomendado):
-docker compose up -d
-
-# Con llama3.2:3b (~2 GB, más rápido):
-OLLAMA_MODEL=llama3.2:3b docker compose up -d
+# Ver logs
+docker-rebuild.cmd -Logs
 ```
 
-El servicio `ollama-init` descarga el modelo automáticamente al primer arranque.  
-API disponible en `http://localhost:8000` · Docs en `http://localhost:8000/docs`
+### Linux/Mac
+
+```bash
+cp .env.example .env
+# Editar .env con tus credenciales
+
+docker compose up -d --build
+```
+
+**Servicios disponibles:**
+- 🌐 FastAPI: `http://localhost` | Docs: `http://localhost/docs`
+- 🤖 Ollama: `http://localhost:11434`
+- 🗄️ PostgreSQL: `localhost:5432`
 
 ## Instalación local (desarrollo sin Docker)
 
@@ -114,17 +124,31 @@ Las tablas se crean automáticamente al iniciar.
 
 ## Configurar webhook en Meta
 
-1. Exponer el servidor: `ngrok http 8000`
-2. En [developers.facebook.com](https://developers.facebook.com) → App → WhatsApp → Webhooks
-3. URL: `https://<ngrok>.ngrok-free.app/webhook/<PHONE_NUMBER_ID>`
-4. Token de verificación: valor de `WHATSAPP_VERIFY_TOKEN`
-5. Suscribir a: `messages`
+1. Exponer públicamente:
+   ```bash
+   ngrok http 80
+   ```
+
+2. Configurar en [Meta Developer Console](https://developers.facebook.com):
+   - App → WhatsApp → Configuration → Webhook
+   - **Callback URL**: `https://tu-ngrok-url.ngrok.io/webhook`
+   - **Verify Token**: valor de `WHATSAPP_VERIFY_TOKEN` en `.env`
+   - Subscribe a: `messages`
 
 ## Datos de demo
 
 ```bash
-python seed_demo.py       # carga un restaurante de ejemplo con productos
-python test_pipeline.py   # prueba el pipeline sin WhatsApp
+# Cargar negocio de ejemplo (estudio jurídico)
+python seed_demo.py
+
+# Probar pipeline sin WhatsApp
+python test_pipeline.py
+
+# Verificar conexión a base de datos
+python test_db_connection.py
+
+# Test completo del sistema
+python test_system.py
 ```
 
 ## API de administración
@@ -189,6 +213,20 @@ app/
 - 🏥 Clínicas — agendar horas, precios de consultas
 - 🏪 Tiendas — stock, precios, pedidos delivery
 - 🏗️ Constructoras — cotizaciones, disponibilidad de materiales
+- ⚖️ Estudios jurídicos — consultas legales, agendamiento, cotizaciones
+
+## 📦 Despliegue en Railway
+
+**📖 Ver guía completa:** [RAILWAY_SETUP.md](RAILWAY_SETUP.md)
+
+### Resumen rápido:
+
+1. **Base de datos:** Ejecutar `railway-init.sql` en Railway Console
+2. **Verificar:** `test.cmd -Db` (con DATABASE_URL de Railway en `.env`)
+3. **Ollama:** Servidor externo (VPS o ngrok)
+4. **Deploy:** GitHub → Railway (detecta Dockerfile automáticamente)
+5. **Variables:** Ver `.env.railway.example`
+6. **Webhook:** Configurar en Meta Developer Console
 
 ## Licencia
 
