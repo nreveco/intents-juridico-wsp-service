@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from app.db.models import BookingStatus, BusinessType, OrderStatus, QuoteStatus
+from app.db.models import BookingStatus, BusinessType, QuoteStatus
 
 
 # ──────────────────────────────────────────────────────────────
@@ -49,16 +49,19 @@ class BusinessResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────
-# Category & Product
+# Legal Catalog
 # ──────────────────────────────────────────────────────────────
 
-class CategoryCreate(BaseModel):
+class LegalCategoryCreate(BaseModel):
+    area: str = Field(..., min_length=2, max_length=50, description="Área legal: penal, familia o civil")
     name: str = Field(..., min_length=2, max_length=100)
     description: Optional[str] = None
+    is_active: bool = True
 
 
-class CategoryResponse(BaseModel):
+class LegalCategoryResponse(BaseModel):
     id: str
+    area: str
     name: str
     description: Optional[str]
     is_active: bool
@@ -66,48 +69,48 @@ class CategoryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ProductCreate(BaseModel):
+class LegalServiceCreate(BaseModel):
+    category_id: Optional[str] = None
     name: str = Field(..., min_length=2, max_length=200)
     description: Optional[str] = None
-    price: float = Field(..., gt=0)
-    category_id: Optional[str] = None
+    price: Optional[float] = None
+    estimated_timeframe: Optional[str] = None
+    requirements: Optional[str] = None
     is_available: bool = True
 
 
-class ProductResponse(BaseModel):
+class LegalServiceResponse(BaseModel):
     id: str
+    business_id: str
+    category_id: Optional[str]
     name: str
     description: Optional[str]
-    price: float
+    base_price: Optional[float]
+    estimated_timeframe: Optional[str]
+    requirements: Optional[str]
     is_available: bool
-    category_id: Optional[str]
 
     model_config = {"from_attributes": True}
 
 
-# ──────────────────────────────────────────────────────────────
-# Order
-# ──────────────────────────────────────────────────────────────
-
-class OrderStatusUpdate(BaseModel):
-    status: OrderStatus
+class CaseInquiryStatusUpdate(BaseModel):
+    status: str
 
 
-class OrderItemResponse(BaseModel):
-    product_name: str
-    quantity: int
-    unit_price: float
-
-    model_config = {"from_attributes": True}
-
-
-class OrderResponse(BaseModel):
+class CaseInquiryResponse(BaseModel):
     id: str
     customer_phone: str
     customer_name: Optional[str]
-    status: OrderStatus
-    total: float
-    items: List[OrderItemResponse] = []
+    legal_area: Optional[str]
+    legal_matter: Optional[str]
+    description: Optional[str]
+    urgency: Optional[str]
+    is_detained: bool
+    has_prior_record: Optional[bool]
+    benefit_type: Optional[str]
+    status: str
+    created_at: str
+    updated_at: Optional[str]
 
     model_config = {"from_attributes": True}
 

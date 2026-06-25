@@ -13,15 +13,12 @@ from app.db.models import (
     BookingStatus,
     Business,
     BusinessSettings,
-    Category,
+    LegalCategory,
+    LegalService,
     Conversation,
     ConversationStatus,
     Lead,
     Message,
-    Order,
-    OrderItem,
-    OrderStatus,
-    Product,
     Quote,
     QuoteItem,
     QuoteStatus,
@@ -32,13 +29,11 @@ from app.models.schemas import (
     BusinessCreate,
     BusinessResponse,
     BusinessUpdate,
-    CategoryCreate,
-    CategoryResponse,
     DashboardResponse,
-    OrderResponse,
-    OrderStatusUpdate,
-    ProductCreate,
-    ProductResponse,
+    LegalCategoryCreate,
+    LegalCategoryResponse,
+    LegalServiceCreate,
+    LegalServiceResponse,
     QuoteItemCreate,
     QuoteItemResponse,
     QuoteResponse,
@@ -159,18 +154,20 @@ async def update_business(
 # Categories
 # ──────────────────────────────────────────────────────────────
 
-@router.post("/businesses/{business_id}/categories", response_model=CategoryResponse, status_code=201)
+@router.post("/businesses/{business_id}/categories", response_model=LegalCategoryResponse, status_code=201)
 async def create_category(
     business_id: str,
-    data: CategoryCreate,
+    data: LegalCategoryCreate,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_admin_key),
 ):
-    category = Category(
+    category = LegalCategory(
         id=str(uuid.uuid4()),
         business_id=business_id,
+        area=data.area,
         name=data.name,
         description=data.description,
+        is_active=data.is_active,
     )
     db.add(category)
     await db.commit()
@@ -178,83 +175,87 @@ async def create_category(
     return category
 
 
-@router.get("/businesses/{business_id}/categories", response_model=list[CategoryResponse])
+@router.get("/businesses/{business_id}/categories", response_model=list[LegalCategoryResponse])
 async def list_categories(
     business_id: str,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_admin_key),
 ):
     result = await db.execute(
-        select(Category).where(Category.business_id == business_id)
+        select(LegalCategory).where(LegalCategory.business_id == business_id)
     )
     return result.scalars().all()
 
 
 # ──────────────────────────────────────────────────────────────
-# Products
+# Services
 # ──────────────────────────────────────────────────────────────
 
-@router.post("/businesses/{business_id}/products", response_model=ProductResponse, status_code=201)
+@router.post("/businesses/{business_id}/products", response_model=LegalServiceResponse, status_code=201)
 async def create_product(
     business_id: str,
-    data: ProductCreate,
+    data: LegalServiceCreate,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_admin_key),
 ):
-    product = Product(
+    service = LegalService(
         id=str(uuid.uuid4()),
         business_id=business_id,
         category_id=data.category_id,
         name=data.name,
         description=data.description,
-        price=data.price,
+        base_price=data.price,
+        estimated_timeframe=data.estimated_timeframe,
+        requirements=data.requirements,
         is_available=data.is_available,
     )
-    db.add(product)
+    db.add(service)
     await db.commit()
-    await db.refresh(product)
-    return product
+    await db.refresh(service)
+    return service
 
 
-@router.get("/businesses/{business_id}/products", response_model=list[ProductResponse])
+@router.get("/businesses/{business_id}/products", response_model=list[LegalServiceResponse])
 async def list_products(
     business_id: str,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_admin_key),
 ):
     result = await db.execute(
-        select(Product)
-        .where(Product.business_id == business_id)
-        .order_by(Product.name)
+        select(LegalService)
+        .where(LegalService.business_id == business_id)
+        .order_by(LegalService.name)
     )
     return result.scalars().all()
 
 
-@router.patch("/businesses/{business_id}/products/{product_id}", response_model=ProductResponse)
+@router.patch("/businesses/{business_id}/products/{product_id}", response_model=LegalServiceResponse)
 async def update_product(
     business_id: str,
     product_id: str,
-    data: ProductCreate,
+    data: LegalServiceCreate,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_admin_key),
 ):
     result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.business_id == business_id)
+        select(LegalService).where(LegalService.id == product_id, LegalService.business_id == business_id)
     )
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(404, "Producto no encontrado")
+    service = result.scalar_one_or_none()
+    if not service:
+        raise HTTPException(404, "Servicio no encontrado")
 
-    product.name = data.name
-    product.description = data.description
-    product.price = data.price
-    product.is_available = data.is_available
+    service.name = data.name
+    service.description = data.description
+    service.base_price = data.price
+    service.is_available = data.is_available
     if data.category_id:
-        product.category_id = data.category_id
+        service.category_id = data.category_id
+    service.estimated_timeframe = data.estimated_timeframe
+    service.requirements = data.requirements
 
     await db.commit()
-    await db.refresh(product)
-    return product
+    await db.refresh(service)
+    return service
 
 
 @router.delete("/businesses/{business_id}/products/{product_id}")
@@ -265,53 +266,15 @@ async def delete_product(
     _: str = Depends(require_admin_key),
 ):
     result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.business_id == business_id)
+        select(LegalService).where(LegalService.id == product_id, LegalService.business_id == business_id)
     )
-    product = result.scalar_one_or_none()
-    if not product:
-        raise HTTPException(404, "Producto no encontrado")
+    service = result.scalar_one_or_none()
+    if not service:
+        raise HTTPException(404, "Servicio no encontrado")
 
-    await db.delete(product)
+    await db.delete(service)
     await db.commit()
     return {"deleted": True, "id": product_id}
-
-
-# ──────────────────────────────────────────────────────────────
-# Orders
-# ──────────────────────────────────────────────────────────────
-
-@router.get("/businesses/{business_id}/orders", response_model=list[OrderResponse])
-async def list_orders(
-    business_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: str = Depends(require_admin_key),
-):
-    result = await db.execute(
-        select(Order)
-        .where(Order.business_id == business_id)
-        .order_by(Order.created_at.desc())
-    )
-    return result.scalars().all()
-
-
-@router.patch("/businesses/{business_id}/orders/{order_id}/status")
-async def update_order_status(
-    business_id: str,
-    order_id: str,
-    data: OrderStatusUpdate,
-    db: AsyncSession = Depends(get_db),
-    _: str = Depends(require_admin_key),
-):
-    result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.business_id == business_id)
-    )
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(404, "Pedido no encontrado")
-
-    order.status = data.status
-    await db.commit()
-    return {"updated": True, "status": data.status}
 
 
 # ──────────────────────────────────────────────────────────────
@@ -464,9 +427,6 @@ async def get_dashboard(
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_admin_key),
 ):
-    orders_r = await db.execute(select(Order).where(Order.business_id == business_id))
-    all_orders = orders_r.scalars().all()
-
     leads_r = await db.execute(select(Lead).where(Lead.business_id == business_id))
     all_leads = leads_r.scalars().all()
 
@@ -481,9 +441,9 @@ async def get_dashboard(
     return DashboardResponse(
         total_conversations=len(all_convs),
         total_leads=len(all_leads),
-        total_orders=len(all_orders),
-        total_revenue=round(sum(o.total or 0 for o in all_orders), 2),
-        pending_orders=sum(1 for o in all_orders if o.status == OrderStatus.PENDING),
+        total_orders=0,
+        total_revenue=0.0,
+        pending_orders=0,
         pending_bookings=sum(1 for b in all_bookings if b.status == BookingStatus.PENDING),
     )
 
@@ -699,41 +659,14 @@ async def get_analytics(
     for m in inbound:
         intent_dist[m.intent] = intent_dist.get(m.intent, 0) + 1
 
-    # Orders in period
-    orders_r = await db.execute(
-        select(Order).where(Order.business_id == business_id, Order.created_at >= since)
-    )
-    period_orders = orders_r.scalars().all()
-    revenue = round(sum(o.total or 0 for o in period_orders), 2)
-
-    # Orders per day
-    orders_by_day: dict[str, float] = {}
-    for o in period_orders:
-        day = o.created_at.strftime("%Y-%m-%d")
-        orders_by_day[day] = round(orders_by_day.get(day, 0) + (o.total or 0), 2)
-
     # Leads in period
     leads_r = await db.execute(
         select(Lead).where(Lead.business_id == business_id, Lead.created_at >= since)
     )
     period_leads = leads_r.scalars().all()
 
-    # Conversion rate: leads who placed an order (by phone)
     lead_phones = {l.phone for l in period_leads}
-    order_phones = {o.customer_phone for o in period_orders}
-    converted = len(lead_phones & order_phones)
-    conversion_rate = round(converted / len(lead_phones) * 100, 1) if lead_phones else 0.0
-
-    # Top products queried (from OrderItems in period)
-    order_ids = [o.id for o in period_orders]
-    top_products: dict[str, int] = {}
-    if order_ids:
-        oi_r = await db.execute(
-            select(OrderItem).where(OrderItem.order_id.in_(order_ids))
-        )
-        for oi in oi_r.scalars().all():
-            top_products[oi.product_name] = top_products.get(oi.product_name, 0) + oi.quantity
-    top_products_sorted = sorted(top_products.items(), key=lambda x: x[1], reverse=True)[:5]
+    conversion_rate = 0.0
 
     return {
         "period": period,
@@ -741,11 +674,9 @@ async def get_analytics(
         "messages_by_day": msgs_by_day,
         "intent_distribution": intent_dist,
         "new_leads": len(period_leads),
-        "new_orders": len(period_orders),
-        "revenue": revenue,
-        "revenue_by_day": orders_by_day,
+        "new_orders": 0,
+        "revenue": 0.0,
+        "revenue_by_day": {},
         "conversion_rate_pct": conversion_rate,
-        "top_products": [{
-            "product": p, "units_sold": q
-        } for p, q in top_products_sorted],
+        "top_products": [],
     }
