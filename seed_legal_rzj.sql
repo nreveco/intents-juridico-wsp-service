@@ -47,28 +47,5 @@ VALUES
  'Establecimiento o modificación del régimen de visitas. Incluye: mediación, demanda judicial si no hay acuerdo.',
  350000, '2-4 meses', 'Busca establecer relación estable entre padre/madre e hijo.', true)
 ON CONFLICT DO NOTHING;
- 'Cobranza de deudas mediante juicio ejecutivo o cobranza ordinaria. Incluye: demanda, embargo, remate si es necesario.',
- 400000, '4-12 meses', 'Honorarios variables según monto a cobrar. Requiere título ejecutivo.', true),
-('00000000-0000-0000-0000-000000000111', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012',
- 'Compraventa de Inmuebles - Escrituración',
- 'Redacción y tramitación de escrituras de compraventa. Incluye: revisión de títulos, inscripción en Conservador de Bienes Raíces.',
- 350000, '1-2 meses', 'No incluye impuestos ni tasas notariales (corren por cuenta del cliente).', true),
-('00000000-0000-0000-0000-000000000112', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012',
- 'Regularización de Propiedades',
- 'Tramitación de posesión efectiva, inscripciones pendientes, saneamiento de títulos.',
- 600000, '3-6 meses', 'Búsqueda de antecedentes, gestiones ante Conservador de Bienes Raíces.', true),
-('00000000-0000-0000-0000-000000000113', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012',
- 'Redacción de Contratos',
- 'Redacción y revisión de contratos (arriendo, compraventa, prestación de servicios). Incluye: análisis de cláusulas, asesoría legal.',
- 200000, '1-2 semanas', 'Entrega rápida. Consulta gratuita para evaluar necesidades.', true),
-('00000000-0000-0000-0000-000000000114', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Consulta Legal Presencial',
- 'Reunión presencial de 1 hora con abogado especialista. Evaluación de tu caso, estrategia legal recomendada, presupuesto detallado.',
- 50000, '1 hora', '⚠️ PRIMERA CONSULTA GRATUITA para nuevos clientes.', true),
-('00000000-0000-0000-0000-000000000115', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Traslado de Imputados',
- 'Coordinación de traslado de imputados detenidos a audiencias u otras diligencias. Incluye: gestión con Gendarmería, seguimiento del traslado.',
- 400000, 'Inmediato', '⚠️ Servicio de emergencia - disponibilidad inmediata.', true)
-ON CONFLICT DO NOTHING;
 
 COMMIT;
