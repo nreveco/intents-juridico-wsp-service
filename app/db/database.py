@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
@@ -40,4 +41,9 @@ async def init_db():
     """Crea todas las tablas si no existen."""
     from app.db import models  # noqa: F401 – needed so Base sees all models
     async with engine.begin() as conn:
+        # Actualiza el enum `businesstype` en la base de datos existente.
+        # Esto evita LookupError cuando el enum se creó con valores antiguos.
+        await conn.execute(text(
+            "ALTER TYPE businesstype ADD VALUE IF NOT EXISTS 'law_firm';"
+        ))
         await conn.run_sync(Base.metadata.create_all)
