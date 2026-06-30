@@ -41,9 +41,14 @@ async def init_db():
     """Crea todas las tablas si no existen."""
     from app.db import models  # noqa: F401 – needed so Base sees all models
     async with engine.begin() as conn:
-        # Actualiza el enum `businesstype` en la base de datos existente.
-        # Esto evita LookupError cuando el enum se creó con valores antiguos.
+        # Actualiza el enum `businesstype` solo si ya existe en la DB.
+        # En una base de datos nueva, el enum todavía se creará cuando SQLAlchemy
+        # ejecute Base.metadata.create_all.
         await conn.execute(text(
-            "ALTER TYPE businesstype ADD VALUE IF NOT EXISTS 'law_firm';"
+            "DO $$ BEGIN "
+            "IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'businesstype') THEN "
+            "ALTER TYPE businesstype ADD VALUE IF NOT EXISTS 'law_firm'; "
+            "END IF; "
+            "END $$;"
         ))
         await conn.run_sync(Base.metadata.create_all)
