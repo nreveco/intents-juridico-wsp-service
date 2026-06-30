@@ -91,6 +91,21 @@ async def receive_message(
     result = await db.execute(stmt)
     business = result.scalar_one_or_none()
 
+    if not business and settings.whatsapp_phone_number_id:
+        logger.info(
+            "Incoming phone_number_id not registered, falling back to env WHATSAPP_PHONE_NUMBER_ID",
+            extra={
+                "incoming_phone_number_id": phone_number_id,
+                "fallback_phone_number_id": settings.whatsapp_phone_number_id,
+            },
+        )
+        stmt = select(Business).where(
+            Business.phone_number_id == settings.whatsapp_phone_number_id,
+            Business.is_active == True,
+        )
+        result = await db.execute(stmt)
+        business = result.scalar_one_or_none()
+
     if not business:
         active_stmt = select(Business.phone_number_id).where(Business.is_active == True)
         active_result = await db.execute(active_stmt)
