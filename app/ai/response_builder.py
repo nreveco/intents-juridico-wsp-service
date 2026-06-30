@@ -36,6 +36,17 @@ async def build_response(
         f"Datos del sistema: {query_result}"
     )
 
+    logger.info(
+        "Calling response builder model",
+        extra={
+            "intent": intent,
+            "query_result_summary": {
+                "default_message": bool(query_result.get("default_message")),
+                "has_data": bool(query_result.get("data")),
+            },
+        },
+    )
+
     try:
         response = await client.chat.completions.create(
             model=settings.ollama_model,
@@ -46,7 +57,24 @@ async def build_response(
             max_tokens=250,
             temperature=0.4,
         )
-        return response.choices[0].message.content.strip()
+        response_text = response.choices[0].message.content.strip()
+        logger.info(
+            "Response builder completed",
+            extra={
+                "response_text_preview": response_text[:240],
+            },
+        )
+        return response_text
     except Exception as exc:
-        logger.warning(f"Error construyendo respuesta: {exc}")
+        logger.warning(
+            "Error construyendo respuesta",
+            exc_info=exc,
+            extra={
+                "intent": intent,
+                "query_result_summary": {
+                    "default_message": bool(query_result.get("default_message")),
+                    "has_data": bool(query_result.get("data")),
+                },
+            },
+        )
         return query_result.get("default_message", "Un momento, te ayudo enseguida. 🙏")

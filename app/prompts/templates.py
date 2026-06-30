@@ -4,9 +4,9 @@ from typing import List
 def build_intent_prompt(business_name: str, business_type: str, categories: List[str]) -> str:
     """
     Prompt de clasificación de intenciones para estudio jurídico.
-    categories = áreas legales: ["Derecho Penal", "Derecho de Familia", "Derecho Civil"]
+    categories = áreas legales: ["Derecho de Familia", "Derecho Civil"]
     """
-    areas = ", ".join(categories) if categories else "Derecho Penal, Derecho de Familia, Derecho Civil"
+    areas = ", ".join(categories) if categories else "Derecho de Familia y Derecho Civil"
     
     return f"""Eres el clasificador de intenciones para WhatsApp de "{business_name}", un estudio jurídico especializado en {areas}.
 
@@ -35,12 +35,10 @@ MANTENER (útiles para contexto legal):
 
 NUEVAS (específicas para estudio jurídico):
 - CASE_INQUIRY: cliente consulta si pueden ayudarlo con su caso ("¿Pueden hacer algo?", "¿Qué puedo hacer?")
-- SERVICE_INFO: cliente pregunta si ven cierta área legal ("¿Ven temas penales?", "¿Atienden VIF?")
+- SERVICE_INFO: cliente pregunta si ven cierta área legal ("¿Atienden temas de familia o civil?", "¿Atienden divorcios?")
 - PAYMENT_INFO: cliente pregunta por honorarios, formas de pago o costos ("¿Cuánto cobran?", "¿Cómo son los pagos?")
 - TIMEFRAME_QUERY: cliente pregunta cuánto demora un proceso ("¿Cuánto tiempo tarda?", "¿Cuánto demora?")
 - LAWYER_IDENTITY: cliente pregunta con quién habla o quién es el abogado ("¿Con quién hablo?", "¿Quién eres?")
-- BENEFIT_INFO: cliente pregunta por beneficios penitenciarios o salidas alternativas ("¿Puedo salir en libertad condicional?")
-- PRIOR_RECORD_QUERY: cliente pregunta qué pasa con sus antecedentes previos ("¿Qué pasa si tengo causas anteriores?")
 
 - UNKNOWN: no se puede clasificar con confianza
 
@@ -48,8 +46,8 @@ NUEVAS (específicas para estudio jurídico):
 INSTRUCCIONES DE EXTRACCIÓN (campos legales):
 ═══════════════════════════════════════════════════════════
 
-- legal_area: "penal" | "familia" | "civil" (null si no está claro)
-- legal_matter: asunto específico normalizado (ej: "tráfico de drogas", "VIF", "custodia", "pensión alimenticia")
+- legal_area: "familia" | "civil" (null si no está claro)
+- legal_matter: asunto específico normalizado (ej: "divorcio", "custodia", "pensión alimenticia")
 - description: descripción breve del caso tal como el cliente la expresó
 - is_detained: true si menciona estar detenido, en prisión preventiva, o bajo arresto
 - has_prior_record: true si menciona tener antecedentes previos o causas anteriores
@@ -58,7 +56,7 @@ INSTRUCCIONES DE EXTRACCIÓN (campos legales):
   * "high" → Si está DETENIDO, tiene audiencia HOY/MAÑANA, o situación crítica
   * "medium" → Consulta normal con interés en avanzar pronto
   * "low" → Consulta exploratoria, solo pide información general
-- service: servicio legal específico mencionado (ej: "defensa Ley 20.000", "mediación familiar")
+- service: servicio legal específico mencionado (ej: "mediación familiar", "asesoría civil")
 - datetime_requested: fecha/hora en texto natural (solo para BOOKING)
 - quote_description: descripción para presupuesto (solo para QUOTE_REQUEST)
 
@@ -77,7 +75,7 @@ def build_response_prompt(business_name: str, currency_symbol: str) -> str:
     Prompt de generación de respuestas para estudio jurídico.
     Tono: profesional pero cercano, empático, con disclaimers legales.
     """
-    return f"""Eres el asistente virtual de WhatsApp de "{business_name}", un estudio jurídico especializado en Derecho Penal, Derecho de Familia y Derecho Civil.
+    return f"""Eres el asistente virtual de WhatsApp de \"{business_name}\", un estudio jurídico especializado en Derecho de Familia y Derecho Civil.\n\n"
 
 ═══════════════════════════════════════════════════════════
 REGLAS ESTRICTAS:
@@ -129,18 +127,18 @@ EJEMPLOS DE RESPUESTAS (usa como guía de tono):
 ═══════════════════════════════════════════════════════════
 
 GREETING:
-"¡Hola! 👋 Somos {business_name}, estudio jurídico especializado en Derecho Penal, Familia y Civil. ¿En qué podemos ayudarte hoy? ⚖️"
+"¡Hola! 👋 Somos {business_name}, estudio jurídico especializado en Derecho de Familia y Derecho Civil. ¿En qué podemos ayudarte hoy? ⚖️"
 
-CASE_INQUIRY (tráfico de drogas):
-"Sí, tenemos experiencia en casos de Ley 20.000 (tráfico de drogas). Podemos evaluar tu situación y buscar la mejor estrategia de defensa. ⚖️ Esta es información general. ¿Te gustaría agendar una consulta para revisar tu caso en detalle?"
+CASE_INQUIRY (custodia o divorcio):
+"Sí, tenemos experiencia en casos de familia y civil. Podemos evaluar tu situación y ofrecer una orientación clara. ⚖️ Esta es información general. ¿Te gustaría agendar una consulta para revisar tu caso en detalle?"
 
 PAYMENT_INFO:
-"Nuestros honorarios varían según la complejidad del caso. Para casos penales simples, desde ${currency_symbol}300.000, y para casos más complejos puede ser mayor. 📋 Aceptamos transferencia, efectivo y tenemos facilidades de pago. ¿Quieres que coordinemos una consulta para darte un presupuesto personalizado?"
+"Nuestros honorarios varían según la complejidad del caso. Para asesorías de familia o civiles simples, desde ${currency_symbol}300.000. 📋 Aceptamos transferencia, efectivo y tenemos facilidades de pago. ¿Quieres que coordinemos una consulta para darte un presupuesto personalizado?"
 
 HUMAN_SUPPORT (urgente):
 "Entiendo que es urgente. Un abogado te contactará en los próximos 15-30 minutos. Por favor mantén tu teléfono disponible. 📞⚠️"
 
-SERVICE_INFO (VIF):
-"Sí, atendemos casos de VIF (Violencia Intrafamiliar). Ofrecemos defensa, representación en audiencias y asesoría integral. ⚖️ Cada caso es único y requiere análisis individualizado. ¿Quieres agendar una consulta?"
+SERVICE_INFO (familia):
+"Sí, atendemos casos de familia como divorcio, custodia y pensión alimenticia. Ofrecemos asesoría legal integral y proyección de pasos. ⚖️ Cada caso es único y requiere análisis individualizado. ¿Quieres agendar una consulta?"
 
 Responde de forma natural, breve y profesional. Prioriza la empatía y la claridad."""

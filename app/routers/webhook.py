@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -18,8 +18,8 @@ from app.db.models import (
     Message,
 )
 from app.intents.definitions import Intent
-from app.services import bookings, handoff, leads, notifications, quotes
-from app.services import legal_services, case_inquiries, fee_info
+from app.routers.webhook_legal_route import _route_intent_legal
+from app.services import handoff, leads, notifications
 from app.ai.media_processor import analyze_image, extract_pdf_text, transcribe_audio
 from app.whatsapp.gateway import mark_as_read, send_text_message
 from app.whatsapp.media import download_media
@@ -134,6 +134,17 @@ async def receive_message(
 
         contacts = value.get("contacts", [])
         customer_name = contacts[0].get("profile", {}).get("name", "") if contacts else ""
+
+        logger.info(
+            "Parsed incoming WhatsApp message",
+            extra={
+                "phone_number_id": phone_number_id,
+                "message_type": wa_message_type,
+                "customer_phone": customer_phone,
+                "customer_name": customer_name,
+                "wa_message_id": wa_message_id,
+            },
+        )
 
         if wa_message_type == "text":
             message_text = wa_message["text"]["body"].strip()
@@ -256,6 +267,16 @@ async def receive_message(
 
     history: list = (conversation.context or {}).get("history", [])
 
+    logger.info(
+        "Step 1: Media processed, handing off to intent classifier",
+        extra={
+            "phone_number_id": phone_number_id,
+            "business_id": business.id,
+            "message_text": message_text,
+            "media_label": media_label,
+        },
+    )
+
     # ── PASO 1: Clasificar intención ────────────────────────────
     extracted = await classify_intent(
         message=message_text,
@@ -265,6 +286,14 @@ async def receive_message(
         conversation_history=history,
     )
     intent = extracted.intent
+    logger.info(
+        "Intent classification completed",
+        extra={
+            "intent": intent.value,
+            "extracted_product": getattr(extracted, 'product_name', None),
+            "extracted_entities": extracted.dict(exclude={'intent'}),
+        },
+    )
 
     # ── Registrar lead (solo primera vez) ───────────────────────
     if is_new_conversation:
@@ -297,7 +326,7 @@ async def receive_message(
     biz_settings = settings_result.scalar_one_or_none()
     currency_symbol = biz_settings.currency_symbol if biz_settings else "$"
 
-    query_result, interactive_sent = await _route_intent(
+    query_result, interactive_sent = await _route_intent_legal(
         intent=intent,
         extracted=extracted,
         business=business,
@@ -310,18 +339,38 @@ async def receive_message(
         phone_number_id=phone_number_id,
         message_text=message_text,
     )
+    logger.info(
+        "Step 2: Action router completed",
+        extra={
+            "intent": intent.value,
+            "query_result": query_result,
+            "interactive_sent": interactive_sent,
+        },
+    )
 
     # ── PASO 3: Construir y enviar respuesta ────────────────────
     if not interactive_sent:
         if query_result.get("default_message") and not query_result.get("data"):
+            logger.info(
+                "Step 4: Using default message from action router",
+                extra={"query_result": query_result},
+            )
             response_text = query_result["default_message"]
         else:
+            logger.info(
+                "Step 4: Building response from query result",
+                extra={"query_result": query_result},
+            )
             response_text = await build_response(
                 intent=intent.value,
                 original_message=message_text,
                 query_result=query_result,
                 business_name=business.name,
                 currency_symbol=currency_symbol,
+            )
+            logger.info(
+                "Response builder completed",
+                extra={"response_text": response_text},
             )
 
         db.add(Message(
@@ -355,277 +404,3 @@ async def receive_message(
 
     logger.info(f"[{business.name}] {customer_phone} → {intent.value}")
     return {"status": "ok", "intent": intent.value}
-
-
-# ──────────────────────────────────────────────────────────────
-# Intent Router — Day 1 + Day 2
-# ──────────────────────────────────────────────────────────────
-
-async def _route_intent(
-    intent: Intent,
-    extracted,
-    business: Business,
-    biz_settings,
-    db: AsyncSession,
-    customer_phone: str,
-    customer_name: str,
-    conversation: Conversation,
-    currency_symbol: str,
-    phone_number_id: str,
-    message_text: str,
-) -> tuple[dict, bool]:
-    """Retorna (query_result, interactive_sent)."""
-    wa_token = business.whatsapp_token
-
-    if intent == Intent.GREETING:
-        sent = await send_welcome_buttons(
-            whatsapp_token=wa_token,
-            phone_number_id=phone_number_id,
-            to_phone=customer_phone,
-            business_name=business.name,
-            custom_message=business.welcome_message,
-        )
-        if sent:
-            return {}, True
-        msg = business.welcome_message or (
-            f"¡Hola! 👋 Bienvenido a *{business.name}*.\n"
-            "Puedo ayudarte con precios, pedidos, reservas y más. ¿En qué te ayudo?"
-        )
-        return {"default_message": msg}, False
-
-    elif intent == Intent.PRICE_QUERY:
-        if extracted.product_name:
-            return await products.find_product_by_name(db, business.id, extracted.product_name), False
-        return {"default_message": "¿De qué producto o servicio te gustaría saber el precio? 😊"}, False
-
-    elif intent == Intent.PRODUCT_INFO:
-        if extracted.product_name:
-            return await products.find_product_by_name(db, business.id, extracted.product_name), False
-        menu = await products.get_menu_by_category(db, business.id)
-        if menu.get("found") and menu.get("data"):
-            sent = await send_catalog_list(
-                whatsapp_token=wa_token,
-                phone_number_id=phone_number_id,
-                to_phone=customer_phone,
-                grouped_products=menu["data"],
-                currency_symbol=currency_symbol,
-            )
-            if sent:
-                return {}, True
-        return menu, False
-
-    elif intent == Intent.ORDER_CREATE:
-        if extracted.product_name:
-            result = await orders.create_order(
-                db=db,
-                business_id=business.id,
-                customer_phone=customer_phone,
-                product_query=extracted.product_name,
-                quantity=extracted.quantity or 1,
-                customer_name=customer_name,
-            )
-            if result.get("success") and business.human_support_phone:
-                data = result["data"]
-                await notifications.notify_new_order(
-                    whatsapp_token=wa_token,
-                    phone_number_id=phone_number_id,
-                    owner_phone=business.human_support_phone,
-                    order_id=data["order_id"],
-                    customer_phone=customer_phone,
-                    customer_name=customer_name,
-                    product=data["product"],
-                    quantity=data["quantity"],
-                    total=data["total"],
-                    currency_symbol=currency_symbol,
-                )
-            return result, False
-        return {"default_message": "¿Qué te gustaría pedir? Dime el nombre del producto. 🛒"}, False
-
-    elif intent == Intent.ORDER_STATUS:
-        return await orders.get_order_status(db, business.id, customer_phone), False
-
-    elif intent == Intent.BOOKING:
-        if extracted.datetime_requested:
-            result = await bookings.create_booking(
-                db=db,
-                business_id=business.id,
-                customer_phone=customer_phone,
-                service=extracted.service or "reserva general",
-                datetime_requested=extracted.datetime_requested,
-                customer_name=customer_name,
-            )
-            if result.get("success") and business.human_support_phone:
-                data = result["data"]
-                await notifications.notify_new_booking(
-                    whatsapp_token=wa_token,
-                    phone_number_id=phone_number_id,
-                    owner_phone=business.human_support_phone,
-                    booking_id=data["booking_id"],
-                    customer_phone=customer_phone,
-                    customer_name=customer_name,
-                    service=data["service"],
-                    datetime_requested=data["datetime_requested"],
-                )
-            return result, False
-        return {"default_message": "¿Para qué día y hora te gustaría reservar? 📅"}, False
-
-    elif intent == Intent.QUOTE_REQUEST:
-        description = (
-            extracted.quote_description
-            or extracted.service
-            or extracted.product_name
-            or message_text
-        )
-        result = await quotes.create_quote_request(
-            db=db,
-            business_id=business.id,
-            customer_phone=customer_phone,
-            description=description,
-            customer_name=customer_name,
-        )
-        if result.get("success") and business.human_support_phone:
-            data = result["data"]
-            await notifications.notify_new_quote(
-                whatsapp_token=wa_token,
-                phone_number_id=phone_number_id,
-                owner_phone=business.human_support_phone,
-                quote_id=data["quote_id"],
-                customer_phone=customer_phone,
-                customer_name=customer_name,
-                description=description,
-            )
-        return result, False
-
-    elif intent == Intent.CART_ADD:
-        if not extracted.product_name:
-            return {"default_message": "¿Qué producto quieres agregar al pedido? 🛒"}, False
-        result = await cart.add_to_cart(
-            db=db,
-            conversation=conversation,
-            business_id=business.id,
-            product_query=extracted.product_name,
-            quantity=extracted.quantity or 1,
-        )
-        if not result.get("success"):
-            return result, False
-        data = result["data"]
-        cart_text = cart.format_cart_text(data["cart"], currency_symbol)
-        sent = await send_order_confirmation_buttons(
-            whatsapp_token=wa_token,
-            phone_number_id=phone_number_id,
-            to_phone=customer_phone,
-            cart_summary=cart_text,
-            total=data["cart_total"],
-            currency_symbol=currency_symbol,
-        )
-        if sent:
-            return {}, True
-        return {
-            "data": data,
-            "default_message": (
-                f"✅ *{data['product']}* x{data['quantity']} agregado.\n\n"
-                f"{cart_text}\n\n"
-                "¿Quieres agregar algo más o confirmar el pedido?"
-            ),
-        }, False
-
-    elif intent == Intent.CART_VIEW:
-        result = cart.view_cart(conversation, currency_symbol)
-        if not result.get("success"):
-            return result, False
-        data = result["data"]
-        cart_text = cart.format_cart_text(data["cart"], currency_symbol)
-        sent = await send_order_confirmation_buttons(
-            whatsapp_token=wa_token,
-            phone_number_id=phone_number_id,
-            to_phone=customer_phone,
-            cart_summary=cart_text,
-            total=data["total"],
-            currency_symbol=currency_symbol,
-        )
-        if sent:
-            return {}, True
-        return {"data": data, "default_message": f"*Tu carrito:*\n\n{cart_text}"}, False
-
-    elif intent == Intent.CART_CHECKOUT:
-        result = await cart.checkout_cart(
-            db=db,
-            conversation=conversation,
-            business_id=business.id,
-            customer_phone=customer_phone,
-            customer_name=customer_name,
-        )
-        if result.get("success") and business.human_support_phone:
-            data = result["data"]
-            await notifications.notify_cart_checkout(
-                whatsapp_token=wa_token,
-                phone_number_id=phone_number_id,
-                owner_phone=business.human_support_phone,
-                order_id=data["order_id"],
-                customer_phone=customer_phone,
-                customer_name=customer_name,
-                cart=data["items"],
-                total=data["total"],
-                currency_symbol=currency_symbol,
-            )
-        return result, False
-
-    elif intent == Intent.CART_CLEAR:
-        return cart.clear_cart(conversation), False
-
-    elif intent == Intent.HOURS_QUERY:
-        if biz_settings and biz_settings.hours:
-            return {"data": {"horarios": biz_settings.hours}}, False
-        return {"default_message": "Para consultar nuestros horarios escríbenos aquí. 🕐"}, False
-
-    elif intent == Intent.LOCATION_QUERY:
-        if biz_settings and biz_settings.address:
-            msg = f"📍 *Dirección:* {biz_settings.address}"
-            if biz_settings.city:
-                msg += f", {biz_settings.city}"
-            if biz_settings.maps_url:
-                msg += f"\n🗺️ Google Maps: {biz_settings.maps_url}"
-            return {"data": {"address": biz_settings.address}, "default_message": msg}, False
-        return {"default_message": "📍 Escríbenos y te enviamos la ubicación exacta. ¡Te esperamos!"}, False
-
-    elif intent == Intent.HUMAN_SUPPORT:
-        result = await handoff.request_human_handoff(
-            db=db,
-            conversation_id=conversation.id,
-            human_support_phone=business.human_support_phone or "",
-        )
-        if business.human_support_phone:
-            await notifications.notify_handoff(
-                whatsapp_token=wa_token,
-                phone_number_id=phone_number_id,
-                owner_phone=business.human_support_phone,
-                customer_phone=customer_phone,
-                customer_name=customer_name,
-                last_message=message_text,
-            )
-        return result, False
-
-    else:
-        return {
-            "default_message": (
-                "No entendí bien tu consulta 🤔 Puedo ayudarte con:\n"
-                "• 💰 Precios y productos\n"
-                "• 🛒 Hacer un pedido\n"
-                "• 📅 Reservas y cotizaciones\n"
-                "• 🕐 Horarios y ubicación\n"
-                "• 👨‍💼 Hablar con una persona\n\n"
-                "¿Qué necesitas?"
-            )
-        }, False
-
-
-def _map_button_id(btn_id: str) -> str:
-    mapping = {
-        "action_menu": "quiero ver el menú",
-        "action_order": "quiero hacer un pedido",
-        "action_booking": "quiero reservar",
-        "confirm_order": "confirmar pedido",
-        "add_more": "quiero agregar más cosas al pedido",
-        "cancel_order": "cancelar mi pedido",
-    }
-    return mapping.get(btn_id, btn_id.replace("_", " "))

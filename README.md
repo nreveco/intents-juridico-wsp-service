@@ -118,7 +118,7 @@ Las tablas se crean automáticamente al iniciar.
 | `OLLAMA_VISION_MODEL` | Modelo de visión | `llava:7b` |
 | `WHATSAPP_TOKEN` | Token Meta Cloud API | `EAAxxxx...` |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID del número WhatsApp | `123456789012` |
-| `WHATSAPP_VERIFY_TOKEN` | Token de verificación del webhook | cualquier string secreto |
+| `WHATSAPP_VERIFY_TOKEN` | Token de verificación del webhook | `botjuridico_webhook_verify_token_2026` |
 | `DATABASE_URL` | Conexión PostgreSQL | `postgresql+asyncpg://...` |
 | `ADMIN_API_KEY` | Clave para endpoints `/admin/*` | string seguro |
 

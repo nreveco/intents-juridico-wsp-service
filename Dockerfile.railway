@@ -28,7 +28,7 @@ EXPOSE $PORT
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:$PORT/health')"
+  CMD python -c "from httpx import get; import os; port = os.getenv('PORT', '8000'); get(f'http://localhost:{port}/health')"
 
 # Comando de inicio
 CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2

@@ -37,7 +37,7 @@ async def _route_intent_legal(
     if intent == Intent.GREETING:
         msg = business.welcome_message or (
             f"¡Hola! 👋 Somos *{business.name}*, estudio jurídico especializado en "
-            "Derecho Penal, Derecho de Familia y Derecho Civil. ⚖️\n\n"
+            "Derecho de Familia y Derecho Civil. ⚖️\n\n"
             "¿En qué podemos ayudarte hoy?"
         )
         return {"default_message": msg}, False
@@ -306,7 +306,7 @@ async def _route_intent_legal(
             "default_message": (
                 "No entendí bien tu consulta 🤔 Puedo ayudarte con:\n\n"
                 "⚖️ Información sobre nuestros servicios legales\n"
-                "📋 Consultas sobre casos penales, familiares o civiles\n"
+                "📋 Consultas sobre casos familiares o civiles\n"
                 "💰 Información de honorarios\n"
                 "📅 Agendar consultas\n"
                 "📍 Horarios y ubicación\n"

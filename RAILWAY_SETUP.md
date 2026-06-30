@@ -182,7 +182,7 @@ OLLAMA_VISION_MODEL=llava:7b
 # WhatsApp (desde Meta Developer Console)
 WHATSAPP_TOKEN=EAAxxxxxxxxxxxxxxxxx
 WHATSAPP_PHONE_NUMBER_ID=123456789012345
-WHATSAPP_VERIFY_TOKEN=tu_token_secreto_12345
+WHATSAPP_VERIFY_TOKEN=botjuridico_webhook_verify_token_2026
 
 # Admin API (genera una clave segura)
 ADMIN_API_KEY=admin_key_super_secreta_123
@@ -239,7 +239,7 @@ Application startup complete.
 3. Click **Edit** en Webhook
 4. Configura:
    - **Callback URL**: `https://tu-app.railway.app/webhook`
-   - **Verify Token**: El mismo de `WHATSAPP_VERIFY_TOKEN`
+   - **Verify Token**: `botjuridico_webhook_verify_token_2026`
 5. Click **Verify and Save**
 6. Subscribe a: `messages`
 

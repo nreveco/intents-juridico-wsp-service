@@ -38,28 +38,28 @@ TEST_CASES = [
         "message": "Hola, quiero más información",
         "expected_intent": "GREETING",
         "description": "Saludo inicial desde Instagram",
-        "should_contain": ["Mediaciones RJZ", "Derecho Penal", "Derecho de Familia", "Derecho Civil"],
+        "should_contain": ["Mediaciones RJZ", "Derecho de Familia", "Derecho Civil"],
         "urgency": "low"
     },
     {
         "id": 2,
-        "message": "¿Ven temas penales?",
+        "message": "¿Atienden casos de familia?",
         "expected_intent": "SERVICE_INFO",
-        "description": "Consulta sobre servicios de derecho penal",
-        "should_contain": ["penal", "Ley 20.000", "VIF", "defensa"],
+        "description": "Consulta sobre servicios de derecho de familia",
+        "should_contain": ["familia", "divorcio", "custodia", "asesoría"],
         "urgency": "low",
-        "should_extract": {"legal_area": "penal"}
+        "should_extract": {"legal_area": "familia"}
     },
     {
         "id": 3,
-        "message": "Tengo un caso de tráfico de drogas, ¿pueden ayudarme?",
+        "message": "Tengo un problema de custodia, ¿pueden ayudarme?",
         "expected_intent": "CASE_INQUIRY",
-        "description": "Consulta de caso específico - Ley 20.000",
-        "should_contain": ["Ley 20.000", "tráfico", "drogas", "consulta"],
+        "description": "Consulta de caso específico de familia",
+        "should_contain": ["custodia", "hijo", "ayudarme", "consulta"],
         "urgency": "medium",
         "should_extract": {
-            "legal_area": "penal",
-            "legal_matter": "tráfico de drogas"
+            "legal_area": "familia",
+            "legal_matter": "custodia"
         }
     },
     {

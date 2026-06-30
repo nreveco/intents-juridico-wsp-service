@@ -36,6 +36,15 @@ async def classify_intent(
             messages.append({"role": turn["role"], "content": turn["content"]})
 
     messages.append({"role": "user", "content": message})
+    logger.info(
+        "Calling intent classifier model",
+        extra={
+            "business_name": business_name,
+            "business_type": business_type,
+            "categories": categories,
+            "message_preview": message[:120],
+        },
+    )
 
     try:
         response = await client.chat.completions.create(
@@ -47,8 +56,22 @@ async def classify_intent(
         )
         raw = response.choices[0].message.content
         result = ExtractedIntent.model_validate_json(raw)
-        logger.info(f"Intent clasificado: {result.intent.value} | producto={result.product_name}")
+        logger.info(
+            "Intent classification completed",
+            extra={
+                "intent": result.intent.value,
+                "product_name": result.product_name,
+                "raw_response_preview": raw[:200],
+            },
+        )
         return result
     except Exception as exc:
-        logger.warning(f"Error clasificando intent: {exc}")
+        logger.warning(
+            "Error clasificando intent",
+            exc_info=exc,
+            extra={
+                "business_name": business_name,
+                "message_preview": message[:120],
+            },
+        )
         return ExtractedIntent(intent=Intent.UNKNOWN)
