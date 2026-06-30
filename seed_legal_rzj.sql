@@ -5,8 +5,8 @@ BEGIN;
 
 INSERT INTO businesses (id, name, phone_number_id, whatsapp_token, business_type, welcome_message, human_support_phone, is_active)
 VALUES
-('00000000-0000-0000-0000-000000000001', 'Mediaciones RJZ', 'DEMO_PHONE_NUMBER_ID', 'DEMO_TOKEN', 'law_firm',
- '¡Hola! Bienvenido a *Mediaciones RJZ* ⚖️\n\nSomos un estudio jurídico especializado en:\n• Derecho Penal (defensa, beneficios penitenciarios)\n• Derecho de Familia (VIF, custodia, mediación)\n• Derecho Civil (contratos, cobros, propiedades)\n\nEstamos aquí para ayudarte 24/7. ¿En qué podemos asesorarte hoy?',
+('00000000-0000-0000-0000-000000000001', 'Mediaciones RJZ', '1158066464056590', 'DEMO_TOKEN', 'law_firm',
+ '¡Hola! Bienvenido a *Mediaciones RJZ* ⚖️\n\nSomos un estudio jurídico especializado en Derecho de Familia:\n• Custodia de menores\n• Pensión alimenticia\n• Regulación de visitas y mediación familiar\n\nEstamos aquí para ayudarte a encontrar una solución rápida y cercana. ¿En qué podemos asesorarte hoy?',
  '+56912345678', true)
 ON CONFLICT DO NOTHING;
 
@@ -23,42 +23,13 @@ ON CONFLICT DO NOTHING;
 -- Categorías legales
 INSERT INTO legal_categories (id, business_id, area, name, description, is_active)
 VALUES
-('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', 'penal', 'Derecho Penal',
- 'Defensa penal en todas las etapas del proceso. Especialistas en Ley 20.000, VIF, delitos contra las personas, beneficios penitenciarios y recursos de apelación.', true),
 ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'familia', 'Derecho de Familia',
- 'Mediación familiar, custodia de menores, pensión alimenticia, regulación de visitas, y casos de VIF con peritaje psicosocial.', true),
-('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'civil', 'Derecho Civil',
- 'Contratos, compraventa de inmuebles, cobranza judicial, escrituras públicas y asesoría en trámites civiles.', true)
+ 'Mediación familiar, custodia de menores, pensión alimenticia, regulación de visitas y acuerdos de convivencia.', true)
 ON CONFLICT DO NOTHING;
 
 -- Servicios legales
 INSERT INTO legal_services (id, business_id, category_id, name, description, base_price, estimated_timeframe, requirements, is_available)
 VALUES
-('00000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Defensa Penal - Ley 20.000 (Drogas)',
- 'Defensa especializada en casos de tráfico y microtráfico de drogas. Incluye: análisis de pruebas, estrategia de defensa, audiencias, negociación con fiscalía.',
- 800000, '3-6 meses',
- 'Casos atendidos: Art. 3° (microtráfico), Art. 4° (tráfico simple), Art. 5° (tráfico agravado). ⚠️ Evaluación gratuita del caso.', true),
-('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Defensa en VIF (Violencia Intrafamiliar)',
- 'Defensa en casos de violencia intrafamiliar. Incluye: representación en audiencias, coordinación con peritaje psicosocial, estrategia de defensa o acuerdos reparatorios.',
- 600000, '2-4 meses', 'Atendemos tanto a víctimas como a imputados.', true),
-('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Delitos contra las Personas',
- 'Defensa en homicidio, lesiones, amenazas y otros delitos contra las personas. Incluye: estrategia de defensa, recursos, audiencias.',
- 1200000, '4-8 meses', 'Atención urgente para casos con prisión preventiva.', true),
-('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Beneficios Penitenciarios',
- 'Tramitación de libertad condicional, reclusión nocturna, salidas dominicales y otros beneficios de Ley 18.216.',
- 450000, '1-2 meses', 'Requisitos: cumplir parte de condena, no tener sanciones, buena conducta.', true),
-('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Apelaciones y Recursos Penales',
- 'Recursos de apelación, nulidad y amparo en materia penal. Incluye: análisis de sentencia, fundamentación del recurso, audiencia ante Corte de Apelaciones.',
- 700000, '2-4 meses', 'Requiere sentencia dictada. Plazos legales estrictos.', true),
-('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000010',
- 'Calumnias e Injurias',
- 'Querella o defensa en casos de calumnias e injurias. Común en contextos de VIF o conflictos laborales/familiares.',
- 500000, '3-5 meses', 'Requiere presentar pruebas del daño o defensa de la acusación.', true),
 ('00000000-0000-0000-0000-000000000106', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011',
  'Mediación Familiar',
  'Proceso de mediación obligatoria para alimentos, custodia y visitas. Facilitamos acuerdos entre las partes evitando litigio.',
@@ -74,9 +45,8 @@ VALUES
 ('00000000-0000-0000-0000-000000000109', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011',
  'Regulación de Visitas (Relación Directa y Regular)',
  'Establecimiento o modificación del régimen de visitas. Incluye: mediación, demanda judicial si no hay acuerdo.',
- 350000, '2-4 meses', 'Busca establecer relación estable entre padre/madre e hijo.', true),
-('00000000-0000-0000-0000-000000000110', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012',
- 'Cobranza Judicial',
+ 350000, '2-4 meses', 'Busca establecer relación estable entre padre/madre e hijo.', true)
+ON CONFLICT DO NOTHING;
  'Cobranza de deudas mediante juicio ejecutivo o cobranza ordinaria. Incluye: demanda, embargo, remate si es necesario.',
  400000, '4-12 meses', 'Honorarios variables según monto a cobrar. Requiere título ejecutivo.', true),
 ('00000000-0000-0000-0000-000000000111', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000012',

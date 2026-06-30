@@ -72,7 +72,6 @@ async def receive_message(
     5. Construir respuesta (IA)
     6. Enviar por WhatsApp
     """
-    body = await request.json()
     media_label = ""  # prefijo para el inbound Message guardado en DB
 
     # ── Buscar negocio ──────────────────────────────────────────
@@ -116,14 +115,60 @@ async def receive_message(
         )
         return {"status": "business_not_found"}
 
+    logger.info(
+        "Business found for webhook request",
+        extra={
+            "phone_number_id": phone_number_id,
+            "business_id": business.id,
+            "business_name": business.name,
+        },
+    )
+
+    whatsapp_token = settings.whatsapp_token
+    whatsapp_phone_number_id = settings.whatsapp_phone_number_id
+    if not whatsapp_token or not whatsapp_phone_number_id:
+        logger.error(
+            "Faltan credenciales de WhatsApp en el archivo .env",
+            extra={
+                "whatsapp_token": bool(whatsapp_token),
+                "whatsapp_phone_number_id": bool(whatsapp_phone_number_id),
+            },
+        )
+        return {
+            "status": "missing_whatsapp_env_credentials",
+            "error": "Missing WHATSAPP_TOKEN or WHATSAPP_PHONE_NUMBER_ID",
+        }
+
     # ── Parsear payload WhatsApp ────────────────────────────────
     try:
+        body = await request.json()
+    except Exception as exc:
+        raw_body = (await request.body()).decode("utf-8", "replace")
+        logger.error(
+            "Error leyendo payload JSON del webhook",
+            extra={
+                "error": str(exc),
+                "content_type": request.headers.get("content-type"),
+                "body_snippet": raw_body[:200],
+            },
+        )
+        return {
+            "status": "invalid_json_payload",
+            "error": str(exc),
+        }
+
+    try:
+        logger.info("Parsing WhatsApp payload", extra={"body_keys": list(body.keys())})
         entry = body.get("entry", [{}])[0]
         changes = entry.get("changes", [{}])[0]
         value = changes.get("value", {})
         messages_list = value.get("messages", [])
 
         if not messages_list:
+            logger.warning(
+                "Webhook payload contains no WhatsApp messages",
+                extra={"payload_value": value},
+            )
             return {"status": "no_messages"}
 
         wa_message = messages_list[0]
@@ -161,15 +206,15 @@ async def receive_message(
         elif wa_message_type == "audio":
             audio_id = wa_message["audio"]["id"]
             try:
-                audio_bytes, audio_mime = await download_media(business.whatsapp_token, audio_id)
+                audio_bytes, audio_mime = await download_media(whatsapp_token, audio_id)
                 transcribed = await transcribe_audio(audio_bytes, audio_mime)
             except Exception as exc:
                 logger.warning(f"Error procesando audio {audio_id}: {exc}")
                 transcribed = ""
             if not transcribed:
-                await mark_as_read(business.whatsapp_token, phone_number_id, wa_message_id)
+                await mark_as_read(whatsapp_token, whatsapp_phone_number_id, wa_message_id)
                 await send_text_message(
-                    business.whatsapp_token, phone_number_id, customer_phone,
+                    whatsapp_token, whatsapp_phone_number_id, customer_phone,
                     "🎙️ No pude entender tu mensaje de voz. ¿Puedes escribir tu consulta? 😊"
                 )
                 return {"status": "audio_transcription_failed"}
@@ -180,14 +225,14 @@ async def receive_message(
             img = wa_message["image"]
             caption = img.get("caption", "").strip()
             try:
-                img_bytes, img_mime = await download_media(business.whatsapp_token, img["id"])
+                img_bytes, img_mime = await download_media(whatsapp_token, img["id"])
                 img_desc = await analyze_image(img_bytes, img_mime, business.name)
             except Exception as exc:
                 logger.warning(f"Error procesando imagen: {exc}")
                 img_desc = ""
             if not img_desc and not caption:
                 await send_text_message(
-                    business.whatsapp_token, phone_number_id, customer_phone,
+                    whatsapp_token, whatsapp_phone_number_id, customer_phone,
                     "🖼️ Recibí tu imagen pero no pude interpretarla. ¿Puedes describirme qué necesitas?"
                 )
                 return {"status": "image_analysis_failed"}
@@ -201,14 +246,14 @@ async def receive_message(
             if "pdf" not in doc_mime and not doc_filename.endswith(".pdf"):
                 return {"status": "unsupported_document_type"}
             try:
-                pdf_bytes, _ = await download_media(business.whatsapp_token, doc["id"])
+                pdf_bytes, _ = await download_media(whatsapp_token, doc["id"])
                 pdf_text = await extract_pdf_text(pdf_bytes)
             except Exception as exc:
                 logger.warning(f"Error procesando PDF: {exc}")
                 pdf_text = ""
             if not pdf_text.strip():
                 await send_text_message(
-                    business.whatsapp_token, phone_number_id, customer_phone,
+                    whatsapp_token, whatsapp_phone_number_id, customer_phone,
                     "📄 Recibí tu PDF pero no pude extraer el texto. ¿Puedes describirme qué necesitas?"
                 )
                 return {"status": "pdf_empty"}
@@ -223,7 +268,7 @@ async def receive_message(
         return {"status": "parse_error"}
 
     # ── Marcar como leído (no bloqueante) ───────────────────────
-    await mark_as_read(business.whatsapp_token, phone_number_id, wa_message_id)
+    await mark_as_read(whatsapp_token, whatsapp_phone_number_id, wa_message_id)
 
     # ── Obtener/crear conversación ──────────────────────────────
     conv_stmt = select(Conversation).where(
@@ -302,8 +347,8 @@ async def receive_message(
         )
         if business.human_support_phone:
             await notifications.notify_new_lead(
-                whatsapp_token=business.whatsapp_token,
-                phone_number_id=phone_number_id,
+                whatsapp_token=whatsapp_token,
+                phone_number_id=whatsapp_phone_number_id,
                 owner_phone=business.human_support_phone,
                 customer_phone=customer_phone,
                 customer_name=customer_name,
@@ -389,8 +434,8 @@ async def receive_message(
         await db.commit()
 
         await send_text_message(
-            whatsapp_token=business.whatsapp_token,
-            phone_number_id=phone_number_id,
+            whatsapp_token=whatsapp_token,
+            phone_number_id=whatsapp_phone_number_id,
             to_phone=customer_phone,
             message=response_text,
         )

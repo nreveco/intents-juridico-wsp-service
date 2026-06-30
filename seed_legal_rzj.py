@@ -2,9 +2,7 @@
 seed_legal_rzj.py — Carga datos iniciales para Estudio Jurídico Mediaciones RJZ
 
 Este seed prepara el sistema para un estudio jurídico especializado en:
-- Derecho Penal (Ley 20.000, VIF, delitos contra las personas, beneficios penitenciarios)
-- Derecho de Familia (custodia, mediación, pensión alimenticia)
-- Derecho Civil (cobranza, compraventas, contratos)
+- Derecho de Familia (custodia, mediación, pensión alimenticia, regulación de visitas)
 
 Basado en análisis de preguntas frecuentes y casos reales del estudio.
 
@@ -48,16 +46,16 @@ async def seed():
         business = Business(
             id=business_id,
             name="Mediaciones RJZ",
-            phone_number_id="DEMO_PHONE_NUMBER_ID",  # ⚠️ Reemplazar con Phone Number ID real de Meta
+            phone_number_id="1158066464056590",  # ID real usado por el webhook
             whatsapp_token="DEMO_TOKEN",              # ⚠️ Reemplazar con Token real de Meta
             business_type=BusinessType.LAW_FIRM,      # ✅ Ahora usamos LAW_FIRM
             welcome_message=(
                 "¡Hola! Bienvenido a *Mediaciones RJZ* ⚖️\n\n"
-                "Somos un estudio jurídico especializado en:\n"
-                "• Derecho Penal (defensa, beneficios penitenciarios)\n"
-                "• Derecho de Familia (VIF, custodia, mediación)\n"
-                "• Derecho Civil (contratos, cobros, propiedades)\n\n"
-                "Estamos aquí para ayudarte 24/7. ¿En qué podemos asesorarte hoy?"
+                "Somos un estudio jurídico especializado en Derecho de Familia:\n"
+                "• Custodia de menores\n"
+                "• Pensión alimenticia\n"
+                "• Regulación de visitas y mediación familiar\n\n"
+                "Estamos aquí para ayudarte a encontrar una solución rápida y cercana. ¿En qué podemos asesorarte hoy?"
             ),
             human_support_phone="+56912345678",  # ⚠️ Número del abogado responsable
             is_active=True,
@@ -88,28 +86,11 @@ async def seed():
         # ── Categorías Legales (usando LegalCategory) ────────────
         categories_data = [
             {
-                "area": LegalArea.PENAL,
-                "name": "Derecho Penal",
-                "description": (
-                    "Defensa penal en todas las etapas del proceso. "
-                    "Especialistas en Ley 20.000, VIF, delitos contra las personas, "
-                    "beneficios penitenciarios y recursos de apelación."
-                )
-            },
-            {
                 "area": LegalArea.FAMILIA,
                 "name": "Derecho de Familia",
                 "description": (
                     "Mediación familiar, custodia de menores, pensión alimenticia, "
-                    "regulación de visitas, y casos de VIF con peritaje psicosocial."
-                )
-            },
-            {
-                "area": LegalArea.CIVIL,
-                "name": "Derecho Civil",
-                "description": (
-                    "Contratos, compraventa de inmuebles, cobranza judicial, "
-                    "escrituras públicas y asesoría en trámites civiles."
+                    "regulación de visitas y acuerdos de convivencia."
                 )
             },
         ]
@@ -135,78 +116,6 @@ async def seed():
         # - requirements (requisitos generales)
 
         services = [
-            # ─── DERECHO PENAL ──────────────────────────────────────────────
-            (
-                "Defensa Penal - Ley 20.000 (Drogas)",
-                (
-                    "Defensa especializada en casos de tráfico y microtráfico de drogas. "
-                    "Incluye: análisis de pruebas, estrategia de defensa, audiencias, "
-                    "negociación con fiscalía."
-                ),
-                800000,  # Precio base referencial
-                "3-6 meses",
-                "Casos atendidos: Art. 3° (microtráfico), Art. 4° (tráfico simple), Art. 5° (tráfico agravado). ⚠️ Evaluación gratuita del caso.",
-                "Derecho Penal"
-            ),
-            (
-                "Defensa en VIF (Violencia Intrafamiliar)",
-                (
-                    "Defensa en casos de violencia intrafamiliar. "
-                    "Incluye: representación en audiencias, coordinación con peritaje psicosocial, "
-                    "estrategia de defensa o acuerdos reparatorios."
-                ),
-                600000,
-                "2-4 meses",
-                "Atendemos tanto a víctimas como a imputados.",
-                "Derecho Penal"
-            ),
-            (
-                "Delitos contra las Personas",
-                (
-                    "Defensa en homicidio, lesiones, amenazas y otros delitos contra las personas. "
-                    "Incluye: estrategia de defensa, recursos, audiencias."
-                ),
-                1200000,
-                "4-8 meses",
-                "Atención urgente para casos con prisión preventiva.",
-                "Derecho Penal"
-            ),
-            (
-                "Beneficios Penitenciarios",
-                (
-                    "Tramitación de libertad condicional, reclusión nocturna, "
-                    "salidas dominicales y otros beneficios de Ley 18.216."
-                ),
-                450000,
-                "1-2 meses",
-                "Requisitos: cumplir parte de condena, no tener sanciones, buena conducta.",
-                "Derecho Penal"
-            ),
-            (
-                "Apelaciones y Recursos Penales",
-                (
-                    "Recursos de apelación, nulidad y amparo en materia penal. "
-                    "Incluye: análisis de sentencia, fundamentación del recurso, "
-                    "audiencia ante Corte de Apelaciones."
-                ),
-                700000,
-                "2-4 meses",
-                "Requiere sentencia dictada. Plazos legales estrictos.",
-                "Derecho Penal"
-            ),
-            (
-                "Calumnias e Injurias",
-                (
-                    "Querella o defensa en casos de calumnias e injurias. "
-                    "Común en contextos de VIF o conflictos laborales/familiares."
-                ),
-                500000,
-                "3-5 meses",
-                "Requiere presentar pruebas del daño o defensa de la acusación.",
-                "Derecho Penal"
-            ),
-            
-            # ─── DERECHO DE FAMILIA ─────────────────────────────────────────
             (
                 "Mediación Familiar",
                 (
@@ -237,6 +146,22 @@ async def seed():
                     "Incluye: cálculo de pensión, mediación, audiencias."
                 ),
                 400000,
+                "3-5 meses",
+                "Se puede solicitar pensión provisoria urgente. Requiere mediación previa.",
+                "Derecho de Familia"
+            ),
+            (
+                "Regulación de Visitas (Relación Directa y Regular)",
+                (
+                    "Establecimiento o modificación del régimen de visitas. "
+                    "Incluye: mediación, demanda judicial si no hay acuerdo."
+                ),
+                350000,
+                "2-4 meses",
+                "Busca establecer relación estable entre padre/madre e hijo.",
+                "Derecho de Familia"
+            ),
+        ]
                 "3-5 meses",
                 "Se puede solicitar pensión provisoria urgente. Requiere mediación previa.",
                 "Derecho de Familia"

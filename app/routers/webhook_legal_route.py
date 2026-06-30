@@ -3,6 +3,7 @@ Función _route_intent para estudio jurídico.
 Este archivo reemplaza la lógica de routing del webhook.py original.
 """
 
+from app.config import settings
 from app.db.models import Business, BusinessSettings, Conversation
 from app.intents.definitions import Intent
 from app.services import bookings, handoff, leads, notifications, quotes
@@ -28,7 +29,7 @@ async def _route_intent_legal(
     Router de intenciones para estudio jurídico.
     Retorna (query_result, interactive_sent).
     """
-    wa_token = business.whatsapp_token
+    wa_token = settings.whatsapp_token
 
     # ══════════════════════════════════════════════════════════
     # INTENCIONES MANTENIDAS (útiles para estudio jurídico)
