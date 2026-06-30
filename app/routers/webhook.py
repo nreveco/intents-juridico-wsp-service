@@ -76,6 +76,14 @@ async def receive_message(
     media_label = ""  # prefijo para el inbound Message guardado en DB
 
     # ── Buscar negocio ──────────────────────────────────────────
+    logger.info(
+        "Lookup business for incoming webhook",
+        extra={
+            "phone_number_id": phone_number_id,
+            "env_whatsapp_phone_number_id": settings.whatsapp_phone_number_id,
+        },
+    )
+
     stmt = select(Business).where(
         Business.phone_number_id == phone_number_id,
         Business.is_active == True,
@@ -84,7 +92,13 @@ async def receive_message(
     business = result.scalar_one_or_none()
 
     if not business:
-        logger.warning(f"phone_number_id no registrado: {phone_number_id}")
+        active_stmt = select(Business.phone_number_id).where(Business.is_active == True)
+        active_result = await db.execute(active_stmt)
+        active_ids = [row[0] for row in active_result.all()]
+        logger.warning(
+            f"phone_number_id no registrado: {phone_number_id}. "
+            f"Active phone_number_ids={active_ids}"
+        )
         return {"status": "business_not_found"}
 
     # ── Parsear payload WhatsApp ────────────────────────────────
