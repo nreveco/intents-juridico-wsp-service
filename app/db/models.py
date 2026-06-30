@@ -12,6 +12,17 @@ from sqlalchemy import (
     String,
     Text,
 )
+
+
+def sa_enum(enum_cls, **kwargs):
+    return SAEnum(
+        enum_cls,
+        name=enum_cls.__name__.lower(),
+        native_enum=True,
+        validate_strings=True,
+        values_callable=lambda enum: [e.value for e in enum],
+        **kwargs,
+    )
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -23,7 +34,18 @@ from app.db.database import Base
 # Enums
 # ──────────────────────────────────────────────────────────────
 
-class BusinessType(str, enum.Enum):
+class CaseInsensitiveStrEnum(str, enum.Enum):
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            for member in cls:
+                if member.value == normalized or member.name.lower() == normalized:
+                    return member
+        return super()._missing_(value)
+
+
+class BusinessType(CaseInsensitiveStrEnum):
     RESTAURANT = "restaurant"
     CAFE = "cafe"
     SHOP = "shop"
@@ -35,38 +57,38 @@ class BusinessType(str, enum.Enum):
     OTHER = "other"
 
 
-class ConversationStatus(str, enum.Enum):
+class ConversationStatus(CaseInsensitiveStrEnum):
     ACTIVE = "active"
     HUMAN_HANDOFF = "human_handoff"
     CLOSED = "closed"
 
 
-class BookingStatus(str, enum.Enum):
+class BookingStatus(CaseInsensitiveStrEnum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
 
 
-class QuoteStatus(str, enum.Enum):
+class QuoteStatus(CaseInsensitiveStrEnum):
     DRAFT = "draft"
     SENT = "sent"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
 
 
-class LegalArea(str, enum.Enum):
+class LegalArea(CaseInsensitiveStrEnum):
     PENAL = "penal"
     FAMILIA = "familia"
     CIVIL = "civil"
 
 
-class CaseUrgency(str, enum.Enum):
+class CaseUrgency(CaseInsensitiveStrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
-class CaseInquiryStatus(str, enum.Enum):
+class CaseInquiryStatus(CaseInsensitiveStrEnum):
     PENDING = "pending"
     IN_REVIEW = "in_review"
     ACCEPTED = "accepted"
@@ -87,7 +109,7 @@ class Business(Base):
     phone_number_id = Column(String(50), unique=True, nullable=False)
     # Each business can have its own Meta token (or share one)
     whatsapp_token = Column(String(500), nullable=False)
-    business_type = Column(SAEnum(BusinessType), default=BusinessType.OTHER)
+    business_type = Column(sa_enum(BusinessType), default=BusinessType.OTHER)
     welcome_message = Column(Text)
     human_support_phone = Column(String(50))
     is_active = Column(Boolean, default=True)
@@ -132,7 +154,7 @@ class LegalCategory(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     business_id = Column(String(36), ForeignKey("businesses.id"), nullable=False)
-    area = Column(SAEnum(LegalArea), nullable=False)
+    area = Column(sa_enum(LegalArea), nullable=False)
     name = Column(String(100), nullable=False)
     description = Column(Text)
     is_active = Column(Boolean, default=True)
@@ -196,7 +218,7 @@ class Conversation(Base):
     business_id = Column(String(36), ForeignKey("businesses.id"), nullable=False)
     customer_phone = Column(String(50), nullable=False)
     customer_name = Column(String(200))
-    status = Column(SAEnum(ConversationStatus), default=ConversationStatus.ACTIVE)
+    status = Column(sa_enum(ConversationStatus), default=ConversationStatus.ACTIVE)
     # Keeps last 8 turns {role, content} for context injection
     context = Column(JSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -233,14 +255,14 @@ class CaseInquiry(Base):
     customer_name = Column(String(200))
     
     # Área legal (penal, familia, civil)
-    legal_area = Column(SAEnum(LegalArea), nullable=True)
+    legal_area = Column(sa_enum(LegalArea), nullable=True)
     # Asunto legal específico (ej: "tráfico de drogas", "VIF")
     legal_matter = Column(String(200))
     # Descripción del caso
     description = Column(Text)
     
     # Urgencia del caso
-    urgency = Column(SAEnum(CaseUrgency), default=CaseUrgency.MEDIUM)
+    urgency = Column(sa_enum(CaseUrgency), default=CaseUrgency.MEDIUM)
     # Si está detenido
     is_detained = Column(Boolean, default=False)
     # Si tiene antecedentes previos
@@ -248,7 +270,7 @@ class CaseInquiry(Base):
     # Tipo de beneficio buscado (ej: "libertad condicional")
     benefit_type = Column(String(200), nullable=True)
     
-    status = Column(SAEnum(CaseInquiryStatus), default=CaseInquiryStatus.PENDING)
+    status = Column(sa_enum(CaseInquiryStatus), default=CaseInquiryStatus.PENDING)
     notes = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -271,7 +293,7 @@ class Booking(Base):
     datetime_confirmed = Column(DateTime(timezone=True), nullable=True)
     service = Column(String(200))
     notes = Column(Text)
-    status = Column(SAEnum(BookingStatus), default=BookingStatus.PENDING)
+    status = Column(sa_enum(BookingStatus), default=BookingStatus.PENDING)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     business = relationship("Business", back_populates="bookings")
@@ -308,7 +330,7 @@ class Quote(Base):
     # Descripción libre de lo que cotiza (puede ser servicio, obra, reparación...)
     description = Column(Text, nullable=False)
     notes = Column(Text)
-    status = Column(SAEnum(QuoteStatus), default=QuoteStatus.DRAFT)
+    status = Column(sa_enum(QuoteStatus), default=QuoteStatus.DRAFT)
     total = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
