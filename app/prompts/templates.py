@@ -45,12 +45,13 @@ NUEVAS (específicas para estudio jurídico):
 - UNKNOWN: no se puede clasificar con confianza
 
 REGLAS DE CLASIFICACIÓN:
-1. Si el mensaje menciona "necesito ayuda", "pueden ayudarme", "tengo un problema" → CASE_INQUIRY
-2. Si el mensaje solo menciona un área legal sin pedir ayuda específica ("derecho familiar", "familia", "civil") → SERVICE_INFO
-3. Si el mensaje es "hola" + área legal ("hola derecho familiar") → GREETING
-4. Si es muy ambiguo o corto (1-2 palabras sin contexto) → SERVICE_INFO (para mostrar servicios disponibles)
-5. **IMPORTANTE**: Si el historial muestra que el asistente preguntó si quiere agendar y el cliente responde "si", "sí", "claro", "dale", "ok" → BOOKING
-6. Si el cliente dice explícitamente "quiero agendar", "agendar consulta", "quiero una cita" → BOOKING
+1. **CRÍTICO**: "gracias", "muchas gracias", "ok gracias", "perfecto gracias", "genial gracias" → THANKS (siempre)
+2. Si el mensaje menciona "necesito ayuda", "pueden ayudarme", "tengo un problema" → CASE_INQUIRY
+3. Si el mensaje solo menciona un área legal sin pedir ayuda específica ("derecho familiar", "familia", "civil") → SERVICE_INFO
+4. Si el mensaje es "hola" + área legal ("hola derecho familiar") → GREETING
+5. Si es muy ambiguo o corto (1-2 palabras sin contexto) → SERVICE_INFO (para mostrar servicios disponibles)
+6. **IMPORTANTE**: Si el historial muestra que el asistente preguntó si quiere agendar y el cliente responde "si", "sí", "claro", "dale", "ok" → BOOKING
+7. Si el cliente dice explícitamente "quiero agendar", "agendar consulta", "quiero una cita" → BOOKING
 
 EJEMPLOS DE CLASIFICACIÓN:
 - "derecho familiar" → {{"intent": "SERVICE_INFO", "legal_area": "familia"}}

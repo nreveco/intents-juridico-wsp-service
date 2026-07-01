@@ -268,11 +268,14 @@ async def receive_message(
         return {"status": "parse_error"}
 
     # ── Verificar si el mensaje ya fue procesado (deduplicación) ──
-    stmt_check = select(Message).where(Message.wa_message_id == wa_message_id)
-    result_check = await db.execute(stmt_check)
-    existing_message = result_check.scalar_one_or_none()
+    from sqlalchemy import exists
     
-    if existing_message:
+    # Usar select con exists es más eficiente
+    stmt_check = select(exists().where(Message.wa_message_id == wa_message_id))
+    result_check = await db.execute(stmt_check)
+    message_exists = result_check.scalar()
+    
+    if message_exists:
         logger.info(f"Mensaje duplicado detectado: {wa_message_id} - ignorando")
         return {"status": "duplicate_message"}
 
