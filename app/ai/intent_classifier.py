@@ -55,23 +55,36 @@ async def classify_intent(
             temperature=0,
         )
         raw = response.choices[0].message.content
+        logger.info(
+            "Raw response from Ollama intent classifier",
+            extra={
+                "raw_response_full": raw,
+                "model": settings.ollama_model,
+                "base_url": settings.ollama_base_url,
+            },
+        )
         result = ExtractedIntent.model_validate_json(raw)
         logger.info(
             "Intent classification completed",
             extra={
                 "intent": result.intent.value,
-                "product_name": result.product_name,
-                "raw_response_preview": raw[:200],
+                "legal_area": result.legal_area,
+                "legal_matter": result.legal_matter,
+                "urgency": result.urgency,
+                "is_detained": result.is_detained,
             },
         )
         return result
     except Exception as exc:
-        logger.warning(
-            "Error clasificando intent",
+        logger.error(
+            "Error clasificando intent - returning UNKNOWN",
             exc_info=exc,
             extra={
                 "business_name": business_name,
                 "message_preview": message[:120],
+                "raw_response": raw if 'raw' in locals() else None,
+                "model": settings.ollama_model,
+                "base_url": settings.ollama_base_url,
             },
         )
         return ExtractedIntent(intent=Intent.UNKNOWN)
