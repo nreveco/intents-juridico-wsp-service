@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 client = AsyncOpenAI(
     base_url=settings.ollama_base_url,
     api_key="ollama",  # Ollama no requiere API key, pero el SDK lo exige
-    timeout=30.0,  # Timeout de 30 segundos
+    timeout=90.0,  # Timeout de 90 segundos
     max_retries=0,  # Sin reintentos automáticos
 )
 
