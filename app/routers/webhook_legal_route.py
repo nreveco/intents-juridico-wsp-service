@@ -44,30 +44,20 @@ async def _route_intent_legal(
         return {"default_message": msg}, False
 
     elif intent == Intent.BOOKING:
-        # Agendar consulta con abogado
-        if extracted.datetime_requested:
-            result = await bookings.create_booking(
-                db=db,
-                business_id=business.id,
-                customer_phone=customer_phone,
-                service=extracted.service or "consulta legal",
-                datetime_requested=extracted.datetime_requested,
-                customer_name=customer_name,
-            )
-            if result.get("success") and business.human_support_phone:
-                data = result["data"]
-                await notifications.notify_new_booking(
-                    whatsapp_token=wa_token,
-                    phone_number_id=phone_number_id,
-                    owner_phone=business.human_support_phone,
-                    booking_id=data["booking_id"],
-                    customer_phone=customer_phone,
-                    customer_name=customer_name,
-                    service=data["service"],
-                    datetime_requested=data["datetime_requested"],
-                )
-            return result, False
-        return {"default_message": "¿Para qué día y hora te gustaría agendar la consulta? 📅"}, False
+        # Agendar consulta con abogado - Enviar URL de agendamiento directo
+        booking_url = "https://mediacionesrjz.cl/professionals/313f2e46-5375-416a-b5c3-ce390376212d/book"
+        
+        msg = (
+            f"📅 Perfecto, puedes agendar tu sesión de mediación familiar directamente aquí:\n\n"
+            f"👉 {booking_url}\n\n"
+            f"En el link podrás:\n"
+            f"✅ Ver horarios disponibles\n"
+            f"✅ Seleccionar fecha y hora\n"
+            f"✅ Realizar el pago online\n\n"
+            f"Si tienes alguna duda o necesitas ayuda con el agendamiento, no dudes en escribirnos. 😊"
+        )
+        
+        return {"default_message": msg}, False
 
     elif intent == Intent.QUOTE_REQUEST:
         # Solicitar presupuesto personalizado
