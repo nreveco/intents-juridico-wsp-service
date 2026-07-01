@@ -267,6 +267,15 @@ async def receive_message(
         logger.error(f"Error parseando payload WhatsApp: {exc} | body={body}")
         return {"status": "parse_error"}
 
+    # ── Verificar si el mensaje ya fue procesado (deduplicación) ──
+    stmt_check = select(Message).where(Message.wa_message_id == wa_message_id)
+    result_check = await db.execute(stmt_check)
+    existing_message = result_check.scalar_one_or_none()
+    
+    if existing_message:
+        logger.info(f"Mensaje duplicado detectado: {wa_message_id} - ignorando")
+        return {"status": "duplicate_message"}
+
     # ── Marcar como leído (no bloqueante) ───────────────────────
     await mark_as_read(whatsapp_token, whatsapp_phone_number_id, wa_message_id)
 
