@@ -43,6 +43,16 @@ async def _route_intent_legal(
         )
         return {"default_message": msg}, False
 
+    elif intent == Intent.THANKS:
+        # Agradecimiento - mensaje de despedida
+        return {
+            "default_message": (
+                "¡De nada! 😊 Te esperamos en tu hora agendada. "
+                "Si tienes alguna duda antes de la sesión, no dudes en escribirnos. "
+                "¡Que tengas un excelente día! 🙏"
+            )
+        }, False
+
     elif intent == Intent.BOOKING:
         # Agendar consulta con abogado - Enviar URL de agendamiento directo
         booking_url = "https://mediacionesrjz.cl/professionals/313f2e46-5375-416a-b5c3-ce390376212d/book"

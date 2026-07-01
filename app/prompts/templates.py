@@ -28,7 +28,8 @@ INTENCIONES LEGALES DISPONIBLES (DEBES ELEGIR UNA):
 ═══════════════════════════════════════════════════════════
 
 MANTENER (útiles para contexto legal):
-- GREETING: saludo simple, primer contacto ("Hola", "Quiero información")
+- GREETING: saludo simple, primer contacto ("Hola", "Quiero información", "Buenos días")
+- THANKS: agradecimiento o despedida ("Gracias", "Muchas gracias", "Perfecto gracias", "Ok gracias")
 - BOOKING: cliente quiere agendar consulta o reunión
 - QUOTE_REQUEST: cliente solicita presupuesto o propuesta personalizada
 - HUMAN_SUPPORT: cliente quiere hablar con abogado AHORA, es urgente, o está detenido ⚠️
@@ -55,6 +56,9 @@ EJEMPLOS DE CLASIFICACIÓN:
 - "derecho familiar" → {{"intent": "SERVICE_INFO", "legal_area": "familia"}}
 - "necesito ayuda en derecho familiar" → {{"intent": "CASE_INQUIRY", "legal_area": "familia"}}
 - "hola" → {{"intent": "GREETING"}}
+- "gracias" → {{"intent": "THANKS"}}
+- "muchas gracias" → {{"intent": "THANKS"}}
+- "perfecto, gracias" → {{"intent": "THANKS"}}
 - "¿atienden divorcios?" → {{"intent": "SERVICE_INFO", "legal_matter": "divorcio"}}
 - "tengo un problema de custodia" → {{"intent": "CASE_INQUIRY", "legal_matter": "custodia"}}
 - "¿cuánto cobran?" → {{"intent": "PAYMENT_INFO"}}

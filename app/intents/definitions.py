@@ -10,6 +10,7 @@ class Intent(str, enum.Enum):
     
     # Mantener (útiles para contexto legal)
     GREETING = "GREETING"              # Hola / buenos días / quiero información
+    THANKS = "THANKS"                  # Gracias / muchas gracias / perfecto gracias
     BOOKING = "BOOKING"                # Quiero agendar consulta / reunión
     QUOTE_REQUEST = "QUOTE_REQUEST"    # Quiero presupuesto / cotización
     HUMAN_SUPPORT = "HUMAN_SUPPORT"    # Hablar con abogado / urgente / estoy detenido
