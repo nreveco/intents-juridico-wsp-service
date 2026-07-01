@@ -63,6 +63,7 @@ async def _route_intent_legal(
             f"En el link podrás:\n"
             f"✅ Ver horarios disponibles\n"
             f"✅ Seleccionar fecha y hora\n"
+            f"✅ Ver el valor de la sesión\n"
             f"✅ Realizar el pago online\n\n"
             f"Si tienes alguna duda o necesitas ayuda con el agendamiento, no dudes en escribirnos. 😊"
         )
