@@ -36,12 +36,26 @@ MANTENER (útiles para contexto legal):
 - LOCATION_QUERY: cliente pregunta dirección de la oficina o cómo llegar
 
 NUEVAS (específicas para estudio jurídico):
-- CASE_INQUIRY: cliente consulta si pueden ayudarlo con su caso ("¿Pueden ayudarme?", "Tengo un problema de...")
-- SERVICE_INFO: cliente pregunta si ven cierta área legal ("¿Atienden temas de familia?", "¿Ven divorcios?")
+- CASE_INQUIRY: cliente consulta si pueden ayudarlo con su caso específico ("¿Pueden ayudarme?", "Tengo un problema de...", "Necesito ayuda con...")
+- SERVICE_INFO: cliente pregunta si ven cierta área legal SIN tener un caso específico ("¿Atienden temas de familia?", "¿Ven divorcios?", "derecho familiar", "derecho civil")
 - PAYMENT_INFO: cliente pregunta por honorarios, formas de pago o costos
 - TIMEFRAME_QUERY: cliente pregunta cuánto demora un proceso
 - LAWYER_IDENTITY: cliente pregunta con quién habla o quién es el abogado
 - UNKNOWN: no se puede clasificar con confianza
+
+REGLAS DE CLASIFICACIÓN:
+1. Si el mensaje menciona "necesito ayuda", "pueden ayudarme", "tengo un problema" → CASE_INQUIRY
+2. Si el mensaje solo menciona un área legal sin pedir ayuda específica ("derecho familiar", "familia", "civil") → SERVICE_INFO
+3. Si el mensaje es "hola" + área legal ("hola derecho familiar") → GREETING
+4. Si es muy ambiguo o corto (1-2 palabras sin contexto) → SERVICE_INFO (para mostrar servicios disponibles)
+
+EJEMPLOS DE CLASIFICACIÓN:
+- "derecho familiar" → {{"intent": "SERVICE_INFO", "legal_area": "familia"}}
+- "necesito ayuda en derecho familiar" → {{"intent": "CASE_INQUIRY", "legal_area": "familia"}}
+- "hola" → {{"intent": "GREETING"}}
+- "¿atienden divorcios?" → {{"intent": "SERVICE_INFO", "legal_matter": "divorcio"}}
+- "tengo un problema de custodia" → {{"intent": "CASE_INQUIRY", "legal_matter": "custodia"}}
+- "¿cuánto cobran?" → {{"intent": "PAYMENT_INFO"}}
 
 ═══════════════════════════════════════════════════════════
 FORMATO DE RESPUESTA JSON (OBLIGATORIO):
