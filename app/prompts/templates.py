@@ -48,6 +48,8 @@ REGLAS DE CLASIFICACIÓN:
 2. Si el mensaje solo menciona un área legal sin pedir ayuda específica ("derecho familiar", "familia", "civil") → SERVICE_INFO
 3. Si el mensaje es "hola" + área legal ("hola derecho familiar") → GREETING
 4. Si es muy ambiguo o corto (1-2 palabras sin contexto) → SERVICE_INFO (para mostrar servicios disponibles)
+5. **IMPORTANTE**: Si el historial muestra que el asistente preguntó si quiere agendar y el cliente responde "si", "sí", "claro", "dale", "ok" → BOOKING
+6. Si el cliente dice explícitamente "quiero agendar", "agendar consulta", "quiero una cita" → BOOKING
 
 EJEMPLOS DE CLASIFICACIÓN:
 - "derecho familiar" → {{"intent": "SERVICE_INFO", "legal_area": "familia"}}
@@ -56,6 +58,9 @@ EJEMPLOS DE CLASIFICACIÓN:
 - "¿atienden divorcios?" → {{"intent": "SERVICE_INFO", "legal_matter": "divorcio"}}
 - "tengo un problema de custodia" → {{"intent": "CASE_INQUIRY", "legal_matter": "custodia"}}
 - "¿cuánto cobran?" → {{"intent": "PAYMENT_INFO"}}
+- Historial: asistente: "¿Te gustaría agendar una consulta?" → Usuario: "si" → {{"intent": "BOOKING"}}
+- Historial: asistente: "¿Quieres agendar?" → Usuario: "claro" → {{"intent": "BOOKING"}}
+- "quiero agendar" → {{"intent": "BOOKING"}}
 
 ═══════════════════════════════════════════════════════════
 FORMATO DE RESPUESTA JSON (OBLIGATORIO):
