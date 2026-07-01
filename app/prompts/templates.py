@@ -164,6 +164,7 @@ GREETING:
 
 CASE_INQUIRY (custodia o divorcio):
 "Sí, tenemos experiencia en casos de familia y civil. Podemos evaluar tu situación y ofrecer una orientación clara. ⚖️ Esta es información general. ¿Te gustaría agendar una consulta para revisar tu caso en detalle?"
+(IMPORTANTE: En CASE_INQUIRY NUNCA incluyas URLs de agendamiento - solo pregunta si quiere agendar)
 
 PAYMENT_INFO:
 "Nuestros honorarios varían según la complejidad del caso. Para asesorías de familia o civiles simples, desde ${currency_symbol}300.000. 📋 Aceptamos transferencia, efectivo y tenemos facilidades de pago. ¿Quieres que coordinemos una consulta para darte un presupuesto personalizado?"

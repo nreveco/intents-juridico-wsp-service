@@ -270,12 +270,12 @@ async def receive_message(
     # ── Verificar si el mensaje ya fue procesado (deduplicación) ──
     from sqlalchemy import exists
     
-    # Usar select con exists es más eficiente
-    stmt_check = select(exists().where(Message.wa_message_id == wa_message_id))
+    # Verificar con lock para prevenir race conditions
+    stmt_check = select(Message.id).where(Message.wa_message_id == wa_message_id).with_for_update(skip_locked=True).limit(1)
     result_check = await db.execute(stmt_check)
-    message_exists = result_check.scalar()
+    existing_id = result_check.scalar_one_or_none()
     
-    if message_exists:
+    if existing_id:
         logger.info(f"Mensaje duplicado detectado: {wa_message_id} - ignorando")
         return {"status": "duplicate_message"}
 
