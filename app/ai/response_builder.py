@@ -68,26 +68,13 @@ async def build_response(
         )
         return response_text
     except Exception as exc:
-        logger.warning(
-            "Error construyendo respuesta - usando mensaje por defecto",
+        logger.error(
+            "Error construyendo respuesta - no se puede generar respuesta",
             exc_info=exc,
             extra={
                 "intent": intent,
-                "query_result_summary": {
-                    "default_message": bool(query_result.get("default_message")),
-                    "has_data": bool(query_result.get("data")),
-                },
+                "error_type": type(exc).__name__,
             },
         )
-        # Si hay default_message, usarlo; si no, mensaje genérico
-        default_msg = query_result.get("default_message")
-        if default_msg:
-            return default_msg
-        
-        # Mensaje genérico por intent
-        if intent == "CASE_INQUIRY":
-            return "Entendemos tu caso. ⚖️ Para darte una orientación precisa, necesitamos evaluar los detalles en una consulta. ¿Te gustaría agendar?"
-        elif intent == "SERVICE_INFO":
-            return f"Sí, en {business_name} atendemos ese tipo de casos. ¿Te gustaría agendar una consulta para que podamos ayudarte mejor?"
-        else:
-            return "Gracias por contactarnos. Un momento, te ayudo enseguida. 🙏"
+        # Lanzar excepción para que el webhook maneje el error
+        raise

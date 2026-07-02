@@ -407,50 +407,75 @@ async def receive_message(
 
     # ── PASO 3: Construir y enviar respuesta ────────────────────
     if not interactive_sent:
-        if query_result.get("default_message") and not query_result.get("data"):
-            logger.info(
-                "Step 4: Using default message from action router",
-                extra={"query_result": query_result},
-            )
-            response_text = query_result["default_message"]
-        else:
-            logger.info(
-                "Step 4: Building response from query result",
-                extra={"query_result": query_result},
-            )
-            response_text = await build_response(
+        try:
+            if query_result.get("default_message") and not query_result.get("data"):
+                logger.info(
+                    "Step 4: Using default message from action router",
+                    extra={"query_result": query_result},
+                )
+                response_text = query_result["default_message"]
+            else:
+                logger.info(
+                    "Step 4: Building response from query result",
+                    extra={"query_result": query_result},
+                )
+                response_text = await build_response(
+                    intent=intent.value,
+                    original_message=message_text,
+                    query_result=query_result,
+                    business_name=business.name,
+                    currency_symbol=currency_symbol,
+                )
+                logger.info(
+                    "Response builder completed",
+                    extra={"response_text": response_text},
+                )
+
+            db.add(Message(
+                id=str(uuid.uuid4()),
+                conversation_id=conversation.id,
+                direction="outbound",
+                content=response_text,
                 intent=intent.value,
-                original_message=message_text,
-                query_result=query_result,
-                business_name=business.name,
-                currency_symbol=currency_symbol,
+            ))
+
+            history.append({"role": "user", "content": message_text})
+            history.append({"role": "assistant", "content": response_text})
+            ctx = dict(conversation.context or {})
+            ctx["history"] = history[-8:]
+            conversation.context = ctx
+            await db.commit()
+
+            await send_text_message(
+                whatsapp_token=whatsapp_token,
+                phone_number_id=whatsapp_phone_number_id,
+                to_phone=customer_phone,
+                message=response_text,
             )
-            logger.info(
-                "Response builder completed",
-                extra={"response_text": response_text},
+        
+        except Exception as exc:
+            # Si hay error al construir respuesta (timeout, etc), enviar mensaje de espera
+            logger.error(
+                "Error building response - sending wait message",
+                exc_info=exc,
+                extra={
+                    "intent": intent.value,
+                    "error_type": type(exc).__name__,
+                },
             )
-
-        db.add(Message(
-            id=str(uuid.uuid4()),
-            conversation_id=conversation.id,
-            direction="outbound",
-            content=response_text,
-            intent=intent.value,
-        ))
-
-        history.append({"role": "user", "content": message_text})
-        history.append({"role": "assistant", "content": response_text})
-        ctx = dict(conversation.context or {})
-        ctx["history"] = history[-8:]
-        conversation.context = ctx
-        await db.commit()
-
-        await send_text_message(
-            whatsapp_token=whatsapp_token,
-            phone_number_id=whatsapp_phone_number_id,
-            to_phone=customer_phone,
-            message=response_text,
-        )
+            
+            wait_message = "⏳ Espérame un momento, estoy procesando tu consulta..."
+            
+            await send_text_message(
+                whatsapp_token=whatsapp_token,
+                phone_number_id=whatsapp_phone_number_id,
+                to_phone=customer_phone,
+                message=wait_message,
+            )
+            
+            # NO guardar nada en la BD ni el historial para permitir reintento
+            # Simplemente terminar el flujo
+            return {"status": "processing_timeout", "intent": intent.value}
     else:
         history.append({"role": "user", "content": message_text})
         history.append({"role": "assistant", "content": "[interactive]"})
