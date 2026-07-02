@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 client = AsyncOpenAI(
     base_url=settings.ollama_base_url,
     api_key="ollama",  # Ollama no requiere API key, pero el SDK lo exige
-    timeout=90.0,  # Timeout de 90 segundos
+    timeout=120.0,  # Timeout de 90 segundos
     max_retries=0,  # Sin reintentos automáticos
 )
 
@@ -69,7 +69,7 @@ async def build_response(
         return response_text
     except Exception as exc:
         logger.warning(
-            "Error construyendo respuesta",
+            "Error construyendo respuesta - usando mensaje por defecto",
             exc_info=exc,
             extra={
                 "intent": intent,
@@ -79,4 +79,15 @@ async def build_response(
                 },
             },
         )
-        return query_result.get("default_message", "Un momento, te ayudo enseguida. 🙏")
+        # Si hay default_message, usarlo; si no, mensaje genérico
+        default_msg = query_result.get("default_message")
+        if default_msg:
+            return default_msg
+        
+        # Mensaje genérico por intent
+        if intent == "CASE_INQUIRY":
+            return "Entendemos tu caso. ⚖️ Para darte una orientación precisa, necesitamos evaluar los detalles en una consulta. ¿Te gustaría agendar?"
+        elif intent == "SERVICE_INFO":
+            return f"Sí, en {business_name} atendemos ese tipo de casos. ¿Te gustaría agendar una consulta para que podamos ayudarte mejor?"
+        else:
+            return "Gracias por contactarnos. Un momento, te ayudo enseguida. 🙏"
